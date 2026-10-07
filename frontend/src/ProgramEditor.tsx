@@ -26,6 +26,7 @@ import {
 import { chapterById, type ChapterId } from './programCatalog';
 import { getProgram } from './data/allPrograms';
 import type { Language, Speed, ExecutionEvent } from './types/dsa';
+import { recordProgramExecution } from './services/userProgressService';
 
 // Visualizer imports
 import ArrayVisualizer from './visualizers/ArrayVisualizer';
@@ -48,6 +49,7 @@ type Props = {
   chapter?: ChapterId;
   selectedProgram?: string;
   onProgramChange?: (program: string) => void;
+  user?: any;
 };
 
 const speedMap: Record<Speed, number> = {
@@ -58,7 +60,28 @@ const speedMap: Record<Speed, number> = {
   'very-fast': 125,
 };
 
-export default function ProgramEditor({ api, chapter = 'array', selectedProgram = 'create', onProgramChange }: Props) {
+export default function ProgramEditor({ api, chapter = 'array', selectedProgram = 'create', onProgramChange, user }: Props) {
+  const trackExecutionSuccess = () => {
+    const activeUser =
+      user ||
+      (() => {
+        try {
+          const raw = localStorage.getItem('aids_user');
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      })();
+    if (activeUser?.id) {
+      recordProgramExecution(
+        activeUser,
+        chapter,
+        selectedProgram || activeCatalogProgram.id,
+        fullProgramItem?.name || selectedProgram || 'Algorithm'
+      );
+    }
+  };
+
   const [language, setLanguage] = useState<Language>('python');
   const [speed, setSpeed] = useState<Speed>('normal');
   const [code, setCode] = useState<string>('');
@@ -216,6 +239,7 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
         setCurrentStepIndex(0);
         setPlaying(true);
         setStatus('Completed — visualization steps active.');
+        trackExecutionSuccess();
         return;
       } catch (err) {
         console.warn('Trace generation failed, falling back to execution endpoint', err);
@@ -244,6 +268,7 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
         setCurrentStepIndex(0);
         setPlaying(true);
       }
+      trackExecutionSuccess();
     } catch (requestError) {
       if (axios.isCancel(requestError)) {
         setStatus('Execution stopped');

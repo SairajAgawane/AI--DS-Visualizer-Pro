@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database import get_db
 from app.models.history import OperationHistory
@@ -68,6 +69,20 @@ def get_admin_stats(admin: User = Depends(_verify_admin), db: Session = Depends(
     new_users = db.query(User).filter(User.created_at >= week_ago).count()
     login_sessions = db.query(LoginActivity).filter(LoginActivity.status == "success").count()
 
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    today_active_users = db.query(User).filter(User.last_active_date == today_str).count()
+
+    # Sum real programs executed & completed
+    total_programs_executed = db.query(func.coalesce(func.sum(User.programs_executed), 0)).scalar() or 0
+    total_programs_completed = db.query(func.coalesce(func.sum(User.programs_completed), 0)).scalar() or 0
+
+    # Calculate average overall progress across non-admin users
+    user_records = db.query(User).filter(User.role == "user").all()
+    if user_records:
+        avg_progress = round(sum(getattr(u, "overall_progress", 0) for u in user_records) / len(user_records))
+    else:
+        avg_progress = 0
+
     return {
         "success": True,
         "stats": {
@@ -75,6 +90,10 @@ def get_admin_stats(admin: User = Depends(_verify_admin), db: Session = Depends(
             "active_users": active_users,
             "new_users": new_users,
             "login_sessions": login_sessions,
+            "today_active_users": today_active_users,
+            "total_programs_executed": int(total_programs_executed),
+            "total_programs_completed": int(total_programs_completed),
+            "average_progress": avg_progress,
         },
     }
 
@@ -84,18 +103,24 @@ def get_admin_users(admin: User = Depends(_verify_admin), db: Session = Depends(
     users = db.query(User).order_by(User.id.asc()).all()
     result = []
     for u in users:
-        # Calculate completed programs from operation_history if available
-        op_count = db.query(OperationHistory).filter(OperationHistory.user_id == str(u.id)).count()
         last_login_formatted = (
             u.last_login.strftime("%d %b %Y, %I:%M %p")
             if getattr(u, "last_login", None)
             else "Never"
         )
-        reg_date_formatted = (
-            u.created_at.strftime("%d %b %Y")
-            if getattr(u, "created_at", None)
-            else "Unknown"
+        first_login_formatted = (
+            u.first_login_at.strftime("%d %b %Y")
+            if getattr(u, "first_login_at", None)
+            else (u.created_at.strftime("%d %b %Y") if getattr(u, "created_at", None) else "Never")
         )
+
+        # Parse stored progress JSON for recent activity
+        data = {}
+        try:
+            if getattr(u, "progress_data", None):
+                data = json.loads(u.progress_data)
+        except Exception:
+            pass
 
         result.append({
             "id": u.id,
@@ -103,12 +128,22 @@ def get_admin_users(admin: User = Depends(_verify_admin), db: Session = Depends(
             "email": u.email,
             "role": getattr(u, "role", "user") or "user",
             "status": getattr(u, "status", "active") or "active",
-            "registration_date": reg_date_formatted,
+            "first_login": first_login_formatted,
             "last_login": last_login_formatted,
+            "registration_date": first_login_formatted,
             "raw_created_at": u.created_at.isoformat() if u.created_at else None,
             "raw_last_login": u.last_login.isoformat() if u.last_login else None,
-            "programs_completed": op_count,
-            "current_streak": max(1, min(7, op_count)),
+            "current_streak": getattr(u, "current_streak", 0) or 0,
+            "longest_streak": getattr(u, "longest_streak", 0) or 0,
+            "total_login_count": getattr(u, "total_login_count", 1) or 1,
+            "overall_progress": getattr(u, "overall_progress", 0) or 0,
+            "chapters_completed": getattr(u, "chapters_completed", 0) or 0,
+            "programs_executed": getattr(u, "programs_executed", 0) or 0,
+            "programs_completed": getattr(u, "programs_completed", 0) or 0,
+            "learning_sessions": getattr(u, "learning_sessions", 0) or 0,
+            "current_chapter": getattr(u, "current_chapter", "Not Started") or "Not Started",
+            "current_program": getattr(u, "current_program", "Not Started") or "Not Started",
+            "recent_activity": data.get("recent_activity", []),
         })
 
     return {"success": True, "users": result}
@@ -131,6 +166,7 @@ def get_login_activity(admin: User = Depends(_verify_admin), db: Session = Depen
             "email": a.email,
             "role": a.role,
             "login_time": a.login_time.strftime("%d %b %Y, %I:%M %p"),
+            "login_date": a.login_time.strftime("%d %b %Y"),
             "status": "Successful" if a.status == "success" else "Failed",
             "raw_status": a.status,
         })

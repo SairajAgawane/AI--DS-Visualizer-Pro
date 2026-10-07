@@ -13,3 +13,4 @@ class LoginActivity(Base):
     role = Column(String(50), nullable=False, default="user")
     login_time = Column(DateTime, default=datetime.utcnow, nullable=False)
     status = Column(String(50), nullable=False, default="success")  # "success" | "failed"
+

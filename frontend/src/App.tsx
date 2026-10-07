@@ -232,6 +232,7 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
             api={API}
             chapter={chapterId}
             selectedProgram={selectedProgram}
+            user={user}
             onProgramChange={(program) => {
               setSelectedProgram(program);
               localStorage.setItem(`aids_program_${chapterId}`, program);

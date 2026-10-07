@@ -18,6 +18,9 @@ import {
   Code2,
   Flame,
   Award,
+  Zap,
+  BarChart3,
+  Calendar,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -32,6 +35,10 @@ interface AdminStats {
   active_users: number;
   new_users: number;
   login_sessions: number;
+  today_active_users?: number;
+  total_programs_executed?: number;
+  total_programs_completed?: number;
+  average_progress?: number;
 }
 
 interface AdminUser {
@@ -40,10 +47,27 @@ interface AdminUser {
   email: string;
   role: string;
   status: string;
-  registration_date: string;
+  first_login: string;
   last_login: string;
-  programs_completed: number;
+  registration_date: string;
   current_streak: number;
+  longest_streak: number;
+  total_login_count: number;
+  overall_progress: number;
+  chapters_completed: number;
+  programs_executed: number;
+  programs_completed: number;
+  learning_sessions: number;
+  current_chapter: string;
+  current_program: string;
+  recent_activity: Array<{
+    title: string;
+    chapter?: string;
+    program?: string;
+    time?: string;
+    timestamp?: string;
+    status?: string;
+  }>;
 }
 
 interface LoginActivityItem {
@@ -53,13 +77,14 @@ interface LoginActivityItem {
   email: string;
   role: string;
   login_time: string;
+  login_date?: string;
   status: string;
 }
 
 export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
   const navigate = useNavigate();
 
-  // Role Protection: Section 11
+  // Role Protection: Section 11 & 30
   const isAdmin = user && user.role === 'admin';
 
   const [activeSection, setActiveSection] = useState<'users' | 'activity'>('users');
@@ -71,7 +96,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Selected User Modal State (Section 18)
+  // Selected User Modal State (Section 15)
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -224,7 +249,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
       {/* TOP HEADER / COMMAND BAR */}
       <header className="border-b border-[#24344A] bg-[#0A1120]/90 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Logo & Section 12 Header */}
+          {/* Logo & Header */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#22D3EE] via-[#6366F1] to-[#8B5CF6] text-white font-black text-sm flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.45)]">
               <span>A</span>
@@ -273,7 +298,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
               </div>
             </div>
 
-            {/* Logout Button (Section 19) */}
+            {/* Logout Button */}
             <button
               onClick={onLogout}
               className="px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
@@ -296,62 +321,83 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
           </div>
         )}
 
-        {/* SECTION 13: TOP STATISTICS CARDS */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Users */}
-          <div className="p-4 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden group hover:border-[#22D3EE]/40 transition-colors">
+        {/* SECTION 12: REAL METRICS CARDS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {/* Total Users */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#CBD5E1]">Total Users</span>
-              <div className="w-7 h-7 rounded-lg bg-[#22D3EE]/15 text-[#22D3EE] flex items-center justify-center">
-                <Users className="w-4 h-4" />
-              </div>
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Total Users</span>
+              <Users className="w-3.5 h-3.5 text-[#22D3EE]" />
             </div>
-            <div className="text-2xl font-black font-mono text-[#F8FAFC] mt-2">
-              {stats ? stats.total_users : isLoading ? '...' : 'No data available'}
+            <div className="text-xl font-black font-mono text-[#F8FAFC] mt-1.5">
+              {stats ? stats.total_users : isLoading ? '...' : 0}
             </div>
-            <div className="text-[11px] text-[#64748B] mt-1">Platform user accounts</div>
           </div>
 
-          {/* Card 2: Active Users */}
-          <div className="p-4 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden group hover:border-[#22C55E]/40 transition-colors">
+          {/* Active Users */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#CBD5E1]">Active Users</span>
-              <div className="w-7 h-7 rounded-lg bg-[#22C55E]/15 text-[#22C55E] flex items-center justify-center">
-                <UserCheck className="w-4 h-4" />
-              </div>
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Active Users</span>
+              <UserCheck className="w-3.5 h-3.5 text-[#22C55E]" />
             </div>
-            <div className="text-2xl font-black font-mono text-[#22C55E] mt-2">
-              {stats ? stats.active_users : isLoading ? '...' : 'No data available'}
+            <div className="text-xl font-black font-mono text-[#22C55E] mt-1.5">
+              {stats ? stats.active_users : isLoading ? '...' : 0}
             </div>
-            <div className="text-[11px] text-[#64748B] mt-1">Status: Active verified</div>
           </div>
 
-          {/* Card 3: New Users */}
-          <div className="p-4 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden group hover:border-[#8B5CF6]/40 transition-colors">
+          {/* Today's Active Users */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#CBD5E1]">New Users</span>
-              <div className="w-7 h-7 rounded-lg bg-[#8B5CF6]/15 text-[#8B5CF6] flex items-center justify-center">
-                <UserPlus className="w-4 h-4" />
-              </div>
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Today Active</span>
+              <Calendar className="w-3.5 h-3.5 text-[#38BDF8]" />
             </div>
-            <div className="text-2xl font-black font-mono text-[#8B5CF6] mt-2">
-              {stats ? stats.new_users : isLoading ? '...' : 'No data available'}
+            <div className="text-xl font-black font-mono text-[#38BDF8] mt-1.5">
+              {stats ? stats.today_active_users ?? 0 : isLoading ? '...' : 0}
             </div>
-            <div className="text-[11px] text-[#64748B] mt-1">Joined in last 7 days</div>
           </div>
 
-          {/* Card 4: Login Sessions */}
-          <div className="p-4 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden group hover:border-[#38BDF8]/40 transition-colors">
+          {/* Login Sessions */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#CBD5E1]">Login Sessions</span>
-              <div className="w-7 h-7 rounded-lg bg-[#38BDF8]/15 text-[#38BDF8] flex items-center justify-center">
-                <Activity className="w-4 h-4" />
-              </div>
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Login Sessions</span>
+              <Activity className="w-3.5 h-3.5 text-[#8B5CF6]" />
             </div>
-            <div className="text-2xl font-black font-mono text-[#38BDF8] mt-2">
-              {stats ? stats.login_sessions : isLoading ? '...' : 'No data available'}
+            <div className="text-xl font-black font-mono text-[#8B5CF6] mt-1.5">
+              {stats ? stats.login_sessions : isLoading ? '...' : 0}
             </div>
-            <div className="text-[11px] text-[#64748B] mt-1">Successful auth handshakes</div>
+          </div>
+
+          {/* Total Programs Executed */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Executions</span>
+              <Zap className="w-3.5 h-3.5 text-[#F59E0B]" />
+            </div>
+            <div className="text-xl font-black font-mono text-[#F59E0B] mt-1.5">
+              {stats ? stats.total_programs_executed ?? 0 : isLoading ? '...' : 0}
+            </div>
+          </div>
+
+          {/* Total Programs Completed */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Completed</span>
+              <Code2 className="w-3.5 h-3.5 text-[#10B981]" />
+            </div>
+            <div className="text-xl font-black font-mono text-[#10B981] mt-1.5">
+              {stats ? stats.total_programs_completed ?? 0 : isLoading ? '...' : 0}
+            </div>
+          </div>
+
+          {/* Average Progress */}
+          <div className="p-3.5 rounded-2xl bg-[#0A1120] border border-[#24344A] shadow-xl relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-[#CBD5E1]">Avg Progress</span>
+              <BarChart3 className="w-3.5 h-3.5 text-[#22D3EE]" />
+            </div>
+            <div className="text-xl font-black font-mono text-[#22D3EE] mt-1.5">
+              {stats ? `${stats.average_progress ?? 0}%` : isLoading ? '...' : '0%'}
+            </div>
           </div>
         </div>
 
@@ -421,7 +467,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
           )}
         </div>
 
-        {/* SECTION 14: USER MANAGEMENT TABLE */}
+        {/* SECTION 13: USER MANAGEMENT TABLE WITH REAL COLUMNS */}
         {activeSection === 'users' && (
           <div className="rounded-2xl bg-[#0A1120] border border-[#24344A] overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
@@ -431,7 +477,10 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                     <th className="py-3.5 px-4 font-bold">User</th>
                     <th className="py-3.5 px-4 font-bold">Email</th>
                     <th className="py-3.5 px-4 font-bold">Role</th>
-                    <th className="py-3.5 px-4 font-bold">Registration Date</th>
+                    <th className="py-3.5 px-4 font-bold">Streak</th>
+                    <th className="py-3.5 px-4 font-bold">Progress</th>
+                    <th className="py-3.5 px-4 font-bold">Chapters</th>
+                    <th className="py-3.5 px-4 font-bold">Executions</th>
                     <th className="py-3.5 px-4 font-bold">Last Login</th>
                     <th className="py-3.5 px-4 font-bold">Status</th>
                     <th className="py-3.5 px-4 font-bold text-right">Actions</th>
@@ -440,7 +489,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                 <tbody className="divide-y divide-[#24344A]/60 font-sans">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-[#64748B]">
+                      <td colSpan={10} className="text-center py-8 text-[#64748B]">
                         {isLoading ? 'Loading registered users...' : 'No users match criteria.'}
                       </td>
                     </tr>
@@ -452,10 +501,10 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                         onClick={() => setSelectedUser(u)}
                       >
                         <td className="py-3.5 px-4 font-bold text-[#F8FAFC] flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#38BDF8] to-[#8B5CF6] text-white flex items-center justify-center text-xs font-extrabold shadow-sm">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#38BDF8] to-[#8B5CF6] text-white flex items-center justify-center text-xs font-extrabold shadow-sm shrink-0">
                             {u.name[0]?.toUpperCase() || 'U'}
                           </div>
-                          <span>{u.name}</span>
+                          <span className="truncate max-w-[120px]">{u.name}</span>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-[#CBD5E1]">{u.email}</td>
                         <td className="py-3.5 px-4">
@@ -469,8 +518,23 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                             {u.role}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-[#64748B] font-mono">{u.registration_date}</td>
-                        <td className="py-3.5 px-4 text-[#CBD5E1] font-mono">{u.last_login}</td>
+                        {/* Real Streak (Section 13) */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#F59E0B]">
+                          {u.current_streak} {u.current_streak === 1 ? 'Day' : 'Days'}
+                        </td>
+                        {/* Real Overall Progress */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#22D3EE]">
+                          {u.overall_progress}%
+                        </td>
+                        {/* Chapters Completed */}
+                        <td className="py-3.5 px-4 font-mono text-[#CBD5E1]">
+                          {u.chapters_completed} / 14
+                        </td>
+                        {/* Programs Executed */}
+                        <td className="py-3.5 px-4 font-mono text-[#CBD5E1]">
+                          {u.programs_executed}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#CBD5E1] font-mono text-[11px]">{u.last_login}</td>
                         <td className="py-3.5 px-4">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -523,7 +587,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
           </div>
         )}
 
-        {/* SECTION 15: LOGIN ACTIVITY TABLE */}
+        {/* SECTION 14: LOGIN ACTIVITY TABLE */}
         {activeSection === 'activity' && (
           <div className="rounded-2xl bg-[#0A1120] border border-[#24344A] overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
@@ -532,6 +596,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                   <tr className="border-b border-[#24344A] bg-[#101827]/60 text-[#CBD5E1] font-mono text-[11px]">
                     <th className="py-3.5 px-4 font-bold">User</th>
                     <th className="py-3.5 px-4 font-bold">Email</th>
+                    <th className="py-3.5 px-4 font-bold">Login Date</th>
                     <th className="py-3.5 px-4 font-bold">Login Time</th>
                     <th className="py-3.5 px-4 font-bold">Role</th>
                     <th className="py-3.5 px-4 font-bold">Status</th>
@@ -540,7 +605,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                 <tbody className="divide-y divide-[#24344A]/60 font-sans">
                   {filteredActivities.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-[#64748B]">
+                      <td colSpan={6} className="text-center py-8 text-[#64748B]">
                         {isLoading ? 'Loading activity logs...' : 'No activity records found.'}
                       </td>
                     </tr>
@@ -549,6 +614,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                       <tr key={a.id} className="hover:bg-[#131D2D]/60 transition-colors">
                         <td className="py-3.5 px-4 font-bold text-[#F8FAFC]">{a.user}</td>
                         <td className="py-3.5 px-4 font-mono text-[#CBD5E1]">{a.email}</td>
+                        <td className="py-3.5 px-4 text-[#CBD5E1] font-mono">{a.login_date || a.login_time.split(',')[0]}</td>
                         <td className="py-3.5 px-4 text-[#CBD5E1] font-mono flex items-center gap-1.5">
                           <Clock className="w-3 h-3 text-[#64748B]" />
                           <span>{a.login_time}</span>
@@ -590,15 +656,15 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
         )}
       </main>
 
-      {/* SECTION 18: USER DETAILS MODAL */}
+      {/* SECTION 15: USER PROFILE DETAILS MODAL */}
       {selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg bg-[#101827] border border-[#24344A] rounded-2xl p-6 shadow-2xl relative">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-[#101827] border border-[#24344A] rounded-2xl p-6 shadow-2xl relative">
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-[#24344A]">
               <div>
-                <h3 className="text-base font-bold text-[#F8FAFC]">User Profile</h3>
-                <p className="text-[11px] text-[#64748B]">Detailed account records & DSA learning progress</p>
+                <h3 className="text-base font-bold text-[#F8FAFC]">USER PROFILE</h3>
+                <p className="text-[11px] text-[#64748B]">Real user telemetry & activity trace</p>
               </div>
               <button
                 onClick={() => setSelectedUser(null)}
@@ -634,49 +700,93 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                 </div>
               </div>
 
-              {/* Grid of details */}
-              <div className="grid grid-cols-2 gap-3 font-mono">
+              {/* Login Timestamps & Counts */}
+              <div className="grid grid-cols-3 gap-2.5 font-mono text-[11px]">
                 <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
-                  <span className="text-[10px] text-[#64748B] block">Registration Date</span>
-                  <span className="text-xs font-bold text-[#CBD5E1] mt-0.5 block">
-                    {selectedUser.registration_date}
+                  <span className="text-[10px] text-[#64748B] block font-sans">First Login</span>
+                  <span className="font-bold text-[#CBD5E1] mt-0.5 block truncate">
+                    {selectedUser.first_login}
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
-                  <span className="text-[10px] text-[#64748B] block">Last Login</span>
-                  <span className="text-xs font-bold text-[#CBD5E1] mt-0.5 block">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Last Login</span>
+                  <span className="font-bold text-[#CBD5E1] mt-0.5 block truncate">
                     {selectedUser.last_login}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Login Count</span>
+                  <span className="font-bold text-[#22D3EE] mt-0.5 block">
+                    {selectedUser.total_login_count} sessions
                   </span>
                 </div>
               </div>
 
-              {/* Learning Progress Section */}
-              <div className="p-4 rounded-xl bg-[#0A1120] border border-[#24344A] space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-[#F8FAFC]">
-                  <span className="flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-[#22D3EE]" />
-                    Learning Progress
+              {/* Streak & Progress */}
+              <div className="grid grid-cols-4 gap-2.5 font-mono text-center">
+                <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Current Streak</span>
+                  <span className="text-base font-bold text-[#F59E0B] mt-0.5 block">
+                    {selectedUser.current_streak}d
                   </span>
-                  <span className="text-[#22D3EE] font-mono">{selectedUser.programs_completed} Operations</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-[#101827] border border-[#24344A]">
-                    <Code2 className="w-3.5 h-3.5 text-[#38BDF8]" />
-                    <div>
-                      <span className="text-[#64748B] block text-[9px]">Programs Completed</span>
-                      <span className="font-bold text-[#CBD5E1] font-mono">{selectedUser.programs_completed}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-[#101827] border border-[#24344A]">
-                    <Flame className="w-3.5 h-3.5 text-[#F59E0B]" />
-                    <div>
-                      <span className="text-[#64748B] block text-[9px]">Current Streak</span>
-                      <span className="font-bold text-[#CBD5E1] font-mono">{selectedUser.current_streak} days</span>
-                    </div>
-                  </div>
+                <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Longest Streak</span>
+                  <span className="text-base font-bold text-[#F59E0B] mt-0.5 block">
+                    {selectedUser.longest_streak}d
+                  </span>
                 </div>
+                <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Chapters</span>
+                  <span className="text-base font-bold text-[#22C55E] mt-0.5 block">
+                    {selectedUser.chapters_completed}/14
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-[#0A1120] border border-[#24344A]">
+                  <span className="text-[10px] text-[#64748B] block font-sans">Overall</span>
+                  <span className="text-base font-bold text-[#22D3EE] mt-0.5 block">
+                    {selectedUser.overall_progress}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Execution & Current Focus */}
+              <div className="p-3.5 rounded-xl bg-[#0A1120] border border-[#24344A] space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[#F8FAFC]">
+                  <span>Execution Statistics</span>
+                  <span className="text-[#22D3EE] font-mono">
+                    {selectedUser.programs_executed} Executed · {selectedUser.programs_completed} Completed
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[#CBD5E1] pt-1 border-t border-[#24344A]">
+                  <span>Active Chapter: <strong className="text-[#38BDF8] uppercase">{selectedUser.current_chapter}</strong></span>
+                  <span>Active Program: <strong className="text-[#F8FAFC]">{selectedUser.current_program}</strong></span>
+                </div>
+              </div>
+
+              {/* Recent Activity List (Section 15 & 26) */}
+              <div className="p-3.5 rounded-xl bg-[#0A1120] border border-[#24344A] space-y-2">
+                <div className="text-xs font-bold text-[#F8FAFC] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#22D3EE]" />
+                  <span>Recent Activity Log</span>
+                </div>
+                {(!selectedUser.recent_activity || selectedUser.recent_activity.length === 0) ? (
+                  <p className="text-[11px] text-[#64748B] italic py-2 text-center">
+                    No recorded program executions yet.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {selectedUser.recent_activity.slice(0, 8).map((act, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2 rounded bg-[#101827] border border-[#24344A] text-[11px]"
+                      >
+                        <span className="text-[#CBD5E1] font-semibold">{act.title}</span>
+                        <span className="text-[#64748B] font-mono text-[10px]">{act.time || act.timestamp || 'Recent'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

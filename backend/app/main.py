@@ -49,23 +49,43 @@ with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) NOT NULL DEFAULT 'user'"))
             connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'active'"))
             connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_login_at TIMESTAMP"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_date VARCHAR(20)"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_login_count INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_streak INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS longest_streak INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS programs_executed INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS programs_completed INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS chapters_completed INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS overall_progress INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS learning_sessions INTEGER NOT NULL DEFAULT 0"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_chapter VARCHAR(50) NOT NULL DEFAULT 'Not Started'"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_program VARCHAR(50) NOT NULL DEFAULT 'Not Started'"))
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS progress_data TEXT NOT NULL DEFAULT '{}'"))
         else:
-            try:
-                connection.execute(text("ALTER TABLE operation_history ADD COLUMN language VARCHAR(20) NOT NULL DEFAULT 'python'"))
-            except Exception:
-                pass
-            try:
-                connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'"))
-            except Exception:
-                pass
-            try:
-                connection.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active'"))
-            except Exception:
-                pass
-            try:
-                connection.execute(text("ALTER TABLE users ADD COLUMN last_login TIMESTAMP"))
-            except Exception:
-                pass
+            cols = [
+                ("role", "VARCHAR(50) NOT NULL DEFAULT 'user'"),
+                ("status", "VARCHAR(50) NOT NULL DEFAULT 'active'"),
+                ("last_login", "TIMESTAMP"),
+                ("first_login_at", "TIMESTAMP"),
+                ("last_active_date", "VARCHAR(20)"),
+                ("total_login_count", "INTEGER NOT NULL DEFAULT 0"),
+                ("current_streak", "INTEGER NOT NULL DEFAULT 0"),
+                ("longest_streak", "INTEGER NOT NULL DEFAULT 0"),
+                ("programs_executed", "INTEGER NOT NULL DEFAULT 0"),
+                ("programs_completed", "INTEGER NOT NULL DEFAULT 0"),
+                ("chapters_completed", "INTEGER NOT NULL DEFAULT 0"),
+                ("overall_progress", "INTEGER NOT NULL DEFAULT 0"),
+                ("learning_sessions", "INTEGER NOT NULL DEFAULT 0"),
+                ("current_chapter", "VARCHAR(50) NOT NULL DEFAULT 'Not Started'"),
+                ("current_program", "VARCHAR(50) NOT NULL DEFAULT 'Not Started'"),
+                ("progress_data", "TEXT NOT NULL DEFAULT '{}'"),
+            ]
+            for col_name, col_type in cols:
+                try:
+                    connection.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -83,12 +103,19 @@ try:
             admin_user.status = "active"
         else:
             admin_pwd = os.getenv("ADMIN_PASSWORD", "AdminPassword123!")
+            now_dt = datetime.utcnow()
             admin_user = User(
                 name="System Administrator",
                 email=admin_email,
                 role="admin",
                 status="active",
-                password_hash=_password_hash(admin_pwd)
+                password_hash=_password_hash(admin_pwd),
+                first_login_at=now_dt,
+                last_login=now_dt,
+                last_active_date=now_dt.strftime("%Y-%m-%d"),
+                total_login_count=1,
+                current_streak=0,
+                longest_streak=0,
             )
             _db.add(admin_user)
         _db.commit()
@@ -103,6 +130,7 @@ from app.api.challenge_router import router as challenge_router
 from app.api.learning_router import router as learning_router
 from app.api.auth_router import router as auth_router
 from app.api.admin_router import router as admin_router
+from app.api.user_router import router as user_router
 from app.api.program_router import router as program_router
 
 app.include_router(nlp_router, prefix="/api/ai", tags=["ai"])
@@ -112,6 +140,7 @@ app.include_router(challenge_router, prefix="/api/challenge", tags=["challenge"]
 app.include_router(learning_router, prefix="/api", tags=["learning"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(user_router, prefix="/api/user", tags=["user"])
 app.include_router(program_router, prefix="/api/program", tags=["program-execution"])
 
 
