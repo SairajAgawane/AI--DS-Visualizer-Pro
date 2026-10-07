@@ -1065,7 +1065,6 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
             )}
           </div>
         </div>
-
         {/* PANEL 2: INPUT / PARAMETERS CARD (Col Span 3) */}
         <div className="lg:col-span-3 flex flex-col justify-between bg-[#0A1120] border border-[#24344A] rounded-2xl p-4 shadow-2xl">
           <div>
