@@ -8,6 +8,7 @@ import Profile from './pages/Profile';
 import ProgramEditor from './ProgramEditor';
 import Navbar from './components/Navbar';
 import AICopilotModal from './components/AICopilotModal';
+import AdminPanel from './pages/AdminPanel';
 import { chapters, type ChapterId, chapterById } from './programCatalog';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -28,6 +29,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('aids_user');
+    localStorage.removeItem('aids_token');
   };
 
   return (
@@ -35,9 +37,27 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={!user ? <LandingPage onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />}
+          element={
+            !user ? (
+              <LandingPage onLogin={handleLogin} />
+            ) : user.role === 'admin' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
         />
         <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route
+          path="/admin"
+          element={
+            user?.role === 'admin' ? (
+              <AdminPanel user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to={user ? "/dashboard" : "/"} replace />
+            )
+          }
+        />
         <Route
           path="/dashboard"
           element={user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/" replace />}
