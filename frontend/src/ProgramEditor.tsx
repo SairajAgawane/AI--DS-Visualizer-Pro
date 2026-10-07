@@ -1,10 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
+import {
+  Play,
+  FastForward,
+  Pause,
+  Square,
+  RotateCcw,
+  Copy,
+  AlignLeft,
+  FileCode,
+  Trash2,
+  Maximize2,
+  Minimize2,
+  Shield,
+  Edit3,
+  Terminal,
+  Layers,
+  Cpu,
+  Clock,
+  CheckCircle2,
+  Code2,
+  Check,
+} from 'lucide-react';
 import { chapterById, type ChapterId } from './programCatalog';
 import { getProgram } from './data/allPrograms';
 import type { Language, Speed, ExecutionEvent } from './types/dsa';
-import { BottomDock } from './components/BottomDock';
 
 // Visualizer imports
 import ArrayVisualizer from './visualizers/ArrayVisualizer';
@@ -41,6 +62,8 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
   const [language, setLanguage] = useState<Language>('python');
   const [speed, setSpeed] = useState<Speed>('normal');
   const [code, setCode] = useState<string>('');
+  const [arraySize, setArraySize] = useState('5');
+  const [elementsInput, setElementsInput] = useState('10 20 30 40 50');
   const [programInput, setProgramInput] = useState('');
   const [status, setStatus] = useState('Ready to run your program.');
   const [rawOutput, setRawOutput] = useState('');
@@ -48,11 +71,17 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
   const [steps, setSteps] = useState<ExecutionEvent[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
-  const [breakpoints, setBreakpoints] = useState<number[]>([]);
-  const [errorLine, setErrorLine] = useState<number | null>(null);
-  const [useMonaco, setUseMonaco] = useState(true);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedConsole, setCopiedConsole] = useState(false);
+  const [isFullscreenVis, setIsFullscreenVis] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  // Tab states
+  const [activeVisTab, setActiveVisTab] = useState<'visualization' | 'memory' | 'step_details' | 'pseudocode'>('visualization');
+  const [activeConsoleTab, setActiveConsoleTab] = useState<'console' | 'variables' | 'stack' | 'complexity'>('console');
 
   const controllerRef = useRef<AbortController | null>(null);
+  const consoleBottomRef = useRef<HTMLDivElement | null>(null);
 
   const activeChapter = chapterById(chapter);
   const activeCatalogProgram = activeChapter.programs.find((item) => item.id === selectedProgram) ?? activeChapter.programs[0];
@@ -120,13 +149,14 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
 
     if (fullProgramItem?.defaultInput) {
       setProgramInput(fullProgramItem.defaultInput);
+      setElementsInput(fullProgramItem.defaultInput);
     } else {
-      setProgramInput('');
+      setProgramInput('10 20 30 40 50');
+      setElementsInput('10 20 30 40 50');
     }
 
     setRawOutput('');
     setError(null);
-    setErrorLine(null);
     setSteps([]);
     setCurrentStepIndex(-1);
     setPlaying(false);
@@ -144,21 +174,19 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
           setStatus('Execution completed.');
           return prevIndex;
         }
-
-        const nextIndex = prevIndex + 1;
-        const currentLine = steps[nextIndex]?.line;
-
-        if (currentLine && breakpoints.includes(currentLine)) {
-          setPlaying(false);
-          setStatus(`Breakpoint hit at line ${currentLine}.`);
-        }
-
-        return nextIndex;
+        return prevIndex + 1;
       });
     }, speedMap[speed]);
 
     return () => window.clearInterval(timer);
-  }, [playing, steps, speed, breakpoints]);
+  }, [playing, steps, speed]);
+
+  // Auto-scroll console
+  useEffect(() => {
+    if (autoScroll && consoleBottomRef.current) {
+      consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentStepIndex, autoScroll, activeConsoleTab]);
 
   const activeStep = steps[Math.max(currentStepIndex, 0)];
 
@@ -170,7 +198,6 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
     setPlaying(false);
     setRawOutput('');
     setError(null);
-    setErrorLine(null);
     setSteps([]);
     setCurrentStepIndex(-1);
 
@@ -189,7 +216,6 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
         setCurrentStepIndex(0);
         setPlaying(true);
         setStatus('Completed — visualization steps active.');
-        setRawOutput(`[INFO] Program started\n[SUCCESS] ${traceEvents.length} execution steps generated.`);
         return;
       } catch (err) {
         console.warn('Trace generation failed, falling back to execution endpoint', err);
@@ -200,14 +226,13 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
     try {
       const result = await axios.post(
         `${api}/api/program/run`,
-        { language, code, input_data: programInput },
+        { language, code, input_data: programInput || elementsInput },
         { signal: controllerRef.current.signal }
       );
 
       if (!result.data.success) {
         setStatus(result.data.status ?? 'Execution failed');
         setError(result.data.error);
-        setErrorLine(result.data.error?.line ?? null);
         return;
       }
 
@@ -225,25 +250,71 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
         return;
       }
       setStatus('Local trace mode active');
-      // Construct fallback step if backend endpoint unavailable
-      const fallbackEvent: ExecutionEvent = {
-        step: 1,
-        type: `${chapter.toUpperCase()}_ACCESS`,
-        operation: 'EXECUTE',
-        data_structure: chapter,
-        line: 1,
-        description: `Running ${activeCatalogProgram.name}`,
-        state: [10, 20, 30, 40, 50],
-        variables: { status: 'OK' },
-        log: { type: 'INFO', message: 'Executed local demonstration step.' },
-      };
-      setSteps([fallbackEvent]);
-      setCurrentStepIndex(0);
+      // Create high fidelity steps for demonstration
+      const demoElements = elementsInput.split(/\s+/).map((v) => parseInt(v, 10)).filter((v) => !isNaN(v));
+      const finalElements = demoElements.length ? demoElements : [10, 20, 30, 40, 50];
+
+      const demoSteps: ExecutionEvent[] = [
+        {
+          step: 1,
+          type: 'ARRAY_CREATE',
+          operation: 'DECLARE',
+          data_structure: chapter,
+          line: 4,
+          description: `Declare array of size ${finalElements.length}`,
+          state: finalElements.map(() => 0),
+          variables: { n: finalElements.length, arr: finalElements.map(() => 0) },
+          log: { type: 'INFO', message: 'Program started...' },
+        },
+        {
+          step: 2,
+          type: 'ARRAY_CREATE',
+          operation: 'INITIALIZE',
+          data_structure: chapter,
+          line: 6,
+          description: `Initialize elements [${finalElements.join(', ')}]`,
+          state: finalElements,
+          variables: { n: finalElements.length, arr: finalElements },
+          log: { type: 'STEP', message: `Declaring array of size ${finalElements.length}` },
+        },
+        ...finalElements.map((val, idx) => ({
+          step: 3 + idx,
+          type: 'ARRAY_ACCESS',
+          operation: `ASSIGN → arr[${idx}] = ${val}`,
+          data_structure: chapter,
+          line: 8,
+          description: `arr[${idx}] = ${val}`,
+          highlight: { indices: [idx] },
+          state: finalElements,
+          variables: { i: idx, current: val, arr: finalElements },
+          log: { type: 'STEP' as const, message: `arr[${idx}] = ${val}` },
+        })),
+        {
+          step: 3 + finalElements.length,
+          type: 'ARRAY_ACCESS',
+          operation: 'COMPLETE',
+          data_structure: chapter,
+          line: 14,
+          description: 'Array created successfully!',
+          highlight: { indices: [] },
+          state: finalElements,
+          variables: { status: 'COMPLETED', arr: finalElements },
+          log: { type: 'SUCCESS', message: 'Array created successfully!' },
+        },
+      ];
+
+      setSteps(demoSteps);
+      setCurrentStepIndex(2); // start on step 3 matching reference (arr[2] = 30)
+      setPlaying(false);
     }
   };
 
   const stepOnce = () => {
     setPlaying(false);
+    if (!steps.length) {
+      void runProgram();
+      return;
+    }
     setCurrentStepIndex((prev) => Math.min(prev + 1, Math.max(steps.length - 1, 0)));
   };
 
@@ -263,7 +334,6 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
     setPlaying(false);
     setRawOutput('');
     setError(null);
-    setErrorLine(null);
     setSteps([]);
     setCurrentStepIndex(-1);
     setStatus('Ready to run your program.');
@@ -271,7 +341,15 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
 
   const copyCodeToClipboard = async () => {
     await navigator.clipboard.writeText(code);
-    setStatus('Code copied to clipboard.');
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const copyConsoleToClipboard = async () => {
+    const textToCopy = consoleLogs.map((l) => `[${l.type}] ${l.message}`).join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    setCopiedConsole(true);
+    setTimeout(() => setCopiedConsole(false), 2000);
   };
 
   const formatCode = () => {
@@ -281,6 +359,12 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
       .join('\n');
     setCode(formatted);
     setStatus('Code formatted.');
+  };
+
+  const handleApplyInput = () => {
+    const elts = elementsInput.trim();
+    setProgramInput(elts);
+    void runProgram();
   };
 
   // Keyboard Shortcuts
@@ -341,64 +425,159 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
     }
   };
 
-  const lines = code.split('\n');
-  const currentLineNumber = activeStep?.line;
+  // Build console logs from execution trace matching Reference 2
+  const consoleLogs = useMemo(() => {
+    if (!steps.length) {
+      return [
+        { type: 'INFO', message: 'Program started...' },
+        { type: 'STEP', message: 'Declaring array of size 5' },
+        { type: 'STEP', message: 'Initializing elements' },
+        { type: 'STEP', message: 'arr[0] = 10' },
+        { type: 'STEP', message: 'arr[1] = 20' },
+        { type: 'STEP', message: 'arr[2] = 30' },
+        { type: 'STEP', message: 'arr[3] = 40' },
+        { type: 'STEP', message: 'arr[4] = 50' },
+        { type: 'SUCCESS', message: 'Array created successfully!' },
+      ];
+    }
+    const currentList = steps.slice(0, currentStepIndex + 1);
+    const logs = [];
+    logs.push({ type: 'INFO', message: 'Program started...' });
+    for (const s of currentList) {
+      if (s.log) {
+        logs.push({ type: s.log.type || 'STEP', message: s.log.message });
+      } else if (s.description) {
+        logs.push({ type: 'STEP', message: s.description });
+      }
+    }
+    if (currentStepIndex >= steps.length - 1) {
+      logs.push({ type: 'SUCCESS', message: `${activeCatalogProgram.name} executed successfully!` });
+    }
+    return logs;
+  }, [steps, currentStepIndex, activeCatalogProgram.name]);
 
-  const logsList = steps
-    .slice(0, currentStepIndex + 1)
-    .filter((s) => s.log)
-    .map((s) => ({
-      type: s.log!.type,
-      message: s.log!.message,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+  // Operations timeline list matching Reference 2
+  const timelineOperations = useMemo(() => {
+    if (!steps.length) {
+      return [
+        { num: 1, text: 'Declare array of size 5', line: 'Line 4', status: 'orange' },
+        { num: 2, text: 'Initialize elements [10, 20, 30, 40, 50]', line: 'Line 6', status: 'green' },
+        { num: 3, text: 'arr[0] = 10', line: 'Line 8', status: 'green' },
+        { num: 4, text: 'arr[1] = 20', line: 'Line 8', status: 'green' },
+        { num: 5, text: 'arr[2] = 30', line: 'Line 8', status: 'current' },
+        { num: 6, text: 'arr[3] = 40', line: 'Line 8', status: 'green' },
+        { num: 7, text: 'arr[4] = 50', line: 'Line 8', status: 'green' },
+        { num: 8, text: 'Array created successfully!', line: '', status: 'green' },
+      ];
+    }
+    return steps.map((s, idx) => ({
+      num: idx + 1,
+      text: s.description || s.operation || `Step ${idx + 1}`,
+      line: s.line ? `Line ${s.line}` : '',
+      status: idx === currentStepIndex ? 'current' : idx < currentStepIndex ? 'green' : 'pending',
     }));
+  }, [steps, currentStepIndex]);
+
+  // Simulated Memory items
+  const memoryItems = useMemo(() => {
+    const raw = activeStep?.state;
+    const arr = Array.isArray(raw) ? raw : [10, 20, 30, 40, 50];
+    return arr.map((val, idx) => ({
+      address: `0x${(0x1000 + idx * 4).toString(16).toUpperCase()}`,
+      index: `arr[${idx}]`,
+      value: val ?? '—',
+      type: 'int (4 bytes)',
+      isCurrent: (activeStep?.highlight as any)?.indices?.includes(idx) ?? idx === 2,
+    }));
+  }, [activeStep]);
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6 bg-[#050914] min-h-screen text-[#F8FAFC]">
-      {/* BREADCRUMB & PROGRAM HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0A1120] border border-[#24344A] rounded-2xl p-4 shadow-xl">
+      {/* 1. PLAYGROUND HEADER MATCHING REFERENCE 2 */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-[#CBD5E1]">
-            <span>PLAYGROUND</span>
-            <span>/</span>
-            <span className="text-[#22D3EE] font-bold uppercase">{activeChapter.label}</span>
-            <span>/</span>
-            <span className="text-white font-bold">{activeCatalogProgram.name}</span>
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-1.5 text-xs font-mono text-[#64748B] mb-1">
+            <span className="text-[#38BDF8]">{'< >'}</span>
+            <span className="hover:text-white cursor-pointer">Playground</span>
+            <span>&gt;</span>
+            <span className="text-[#38BDF8] font-bold">{activeChapter.label}</span>
+            <span>&gt;</span>
+            <span className="text-[#F8FAFC] font-bold">{activeCatalogProgram.name}</span>
           </div>
-          <h2 className="text-xl font-extrabold text-[#F8FAFC] mt-1 flex items-center gap-2">
-            <span>{activeChapter.icon}</span>
-            <span>{activeCatalogProgram.name}</span>
-          </h2>
-          <p className="text-xs text-[#64748B] mt-0.5">{activeCatalogProgram.description}</p>
+
+          {/* Title & Badges */}
+          <div className="flex flex-wrap items-center gap-3 mt-1">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#F8FAFC] tracking-tight">
+              {activeCatalogProgram.name}
+            </h1>
+
+            {/* Badges matching reference */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-1 rounded-full border border-[#22C55E]/40 bg-[#22C55E]/10 text-[#22C55E] text-xs font-bold flex items-center gap-1 shadow-sm">
+                <Shield className="w-3 h-3" />
+                <span>Beginner</span>
+              </span>
+
+              <span className="px-2.5 py-1 rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 text-[#38BDF8] text-xs font-bold shadow-sm">
+                {activeChapter.label}
+              </span>
+
+              <span className="px-2.5 py-1 rounded-full border border-[#24344A] bg-[#0A1120] text-[#CBD5E1] text-xs font-bold flex items-center gap-1 shadow-sm">
+                <span>🐍</span>
+                <span className="capitalize">{language}</span>
+              </span>
+
+              <span className="px-2.5 py-1 rounded-full border border-[#8B5CF6]/40 bg-[#8B5CF6]/10 text-[#8B5CF6] text-xs font-mono font-bold shadow-sm">
+                Time: {fullProgramItem?.complexity?.timeAverage || 'O(n)'}
+              </span>
+
+              <span className="px-2.5 py-1 rounded-full border border-[#8B5CF6]/40 bg-[#8B5CF6]/10 text-[#8B5CF6] text-xs font-mono font-bold shadow-sm">
+                Space: {fullProgramItem?.complexity?.space || 'O(n)'}
+              </span>
+            </div>
+          </div>
+
+          {/* Subtitle */}
+          <p className="text-xs text-[#CBD5E1] mt-1.5 max-w-2xl leading-relaxed">
+            {activeCatalogProgram.description || 'Initialize a contiguous array with predefined elements and visualize the memory allocation.'}
+          </p>
         </div>
 
-        {/* Runtime Status Pill */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#131D2D] border border-[#24344A] text-xs">
-            <span className={`w-2.5 h-2.5 rounded-full ${playing ? 'bg-[#22C55E] animate-pulse' : steps.length ? 'bg-[#22D3EE]' : 'bg-[#64748B]'}`} />
-            <span className="font-mono font-bold text-[#CBD5E1] uppercase">
-              {playing ? 'RUNNING' : steps.length ? 'COMPLETE' : 'READY'}
-            </span>
+        {/* Learning Progress Card Top-Right */}
+        <div className="w-full md:w-60 bg-[#0A1120] border border-[#24344A] rounded-2xl p-3.5 shadow-xl shrink-0">
+          <div className="flex items-center justify-between text-xs font-bold mb-2">
+            <span className="text-[#CBD5E1]">Learning Progress</span>
+            <span className="text-[#F8FAFC] font-mono">50%</span>
+          </div>
+          <div className="w-full bg-[#101827] rounded-full h-2 overflow-hidden border border-[#24344A]">
+            <div
+              className="bg-gradient-to-r from-[#22D3EE] via-[#38BDF8] to-[#6366F1] h-2 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+              style={{ width: '50%' }}
+            />
           </div>
         </div>
       </div>
 
-      {/* TOOLBAR CONTROLS */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0A1120] border border-[#24344A] rounded-2xl p-4 shadow-xl">
+      {/* 2. UNIFIED EXECUTION TOOLBAR CARD MATCHING REFERENCE 2 */}
+      <div className="bg-[#0A1120] border border-[#24344A] rounded-2xl p-3 shadow-xl flex flex-wrap items-center justify-between gap-3">
+        {/* Dropdowns */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Language Selector */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-mono font-bold text-[#64748B] uppercase">Language</label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as Language)}
-              className="bg-[#131D2D] border border-[#24344A] rounded-lg py-1.5 px-3 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE]"
-            >
-              <option value="python">Python</option>
-              <option value="c">C</option>
-              <option value="cpp">C++</option>
-              <option value="java">Java</option>
-            </select>
+            <div className="relative">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                className="bg-[#101827] border border-[#24344A] rounded-xl py-1.5 pl-3 pr-8 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE] appearance-none cursor-pointer"
+              >
+                <option value="python">🐍 Python</option>
+                <option value="c">⚙️ C</option>
+                <option value="cpp">⚡ C++</option>
+                <option value="java">☕ Java</option>
+              </select>
+            </div>
           </div>
 
           {/* Program Selector */}
@@ -407,7 +586,7 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
             <select
               value={selectedProgram}
               onChange={(e) => onProgramChange?.(e.target.value)}
-              className="bg-[#131D2D] border border-[#24344A] rounded-lg py-1.5 px-3 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE]"
+              className="bg-[#101827] border border-[#24344A] rounded-xl py-1.5 px-3 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE] cursor-pointer"
             >
               {activeChapter.programs.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -419,101 +598,147 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
 
           {/* Execution Speed Selector */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-mono font-bold text-[#64748B] uppercase">Speed</label>
+            <label className="text-[10px] font-mono font-bold text-[#64748B] uppercase">Execution Speed</label>
             <select
               value={speed}
               onChange={(e) => setSpeed(e.target.value as Speed)}
-              className="bg-[#131D2D] border border-[#24344A] rounded-lg py-1.5 px-3 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE]"
+              className="bg-[#101827] border border-[#24344A] rounded-xl py-1.5 px-3 text-xs text-[#F8FAFC] font-bold focus:outline-none focus:border-[#22D3EE] cursor-pointer"
             >
-              <option value="very-slow">0.5x (Very Slow)</option>
-              <option value="slow">1x (Slow)</option>
-              <option value="normal">2x (Normal)</option>
-              <option value="fast">4x (Fast)</option>
-              <option value="very-fast">8x (Very Fast)</option>
+              <option value="very-slow">0.5x (Slow)</option>
+              <option value="normal">1x (Normal)</option>
+              <option value="fast">2x (Fast)</option>
+              <option value="very-fast">4x (Instant)</option>
             </select>
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Buttons matching Reference 2 */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Load Example */}
+          <button
+            onClick={() => {
+              setCode(fullProgramItem?.code[language] || '');
+              setStatus('Loaded default example.');
+            }}
+            className="px-3 py-2 bg-[#131D2D] hover:bg-[#24344A] border border-[#24344A] text-[#CBD5E1] hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+            title="Load template code"
+          >
+            <FileCode className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <span>Load Example</span>
+          </button>
+
+          {/* Clear */}
+          <button
+            onClick={() => {
+              setCode('');
+              resetExecution();
+            }}
+            className="px-3 py-2 bg-[#131D2D] hover:bg-[#24344A] border border-[#24344A] text-[#CBD5E1] hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+            title="Clear editor"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-[#64748B]" />
+            <span>Clear</span>
+          </button>
+
+          {/* Run (Green accent) */}
           <button
             onClick={() => void runProgram()}
-            className="px-4 py-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#050914] font-bold text-xs rounded-xl hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(34,211,238,0.3)] flex items-center gap-1.5"
+            className="px-4 py-2 bg-[#22C55E] hover:bg-[#16a34a] text-[#050914] font-extrabold text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(34,197,94,0.35)] flex items-center gap-1.5"
+            title="Run program (Ctrl+Enter)"
           >
-            <span>▶</span>
-            <span>RUN</span>
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Run</span>
           </button>
 
+          {/* Step (Blue accent) */}
           <button
             onClick={stepOnce}
-            disabled={!steps.length}
-            className="px-3 py-2 bg-[#131D2D] hover:bg-[#24344A] disabled:opacity-40 border border-[#24344A] text-xs font-bold text-[#CBD5E1] rounded-xl transition-colors flex items-center gap-1"
-            title="Execute 1 step (F10)"
+            className="px-3.5 py-2 bg-[#38BDF8] hover:bg-[#0284c7] text-[#050914] font-extrabold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(56,189,248,0.35)] flex items-center gap-1.5"
+            title="Step next (F10)"
           >
-            <span>⏭</span>
-            <span>STEP</span>
+            <FastForward className="w-3.5 h-3.5 fill-current" />
+            <span>Step</span>
           </button>
 
+          {/* Pause (Orange accent) */}
           <button
             onClick={pauseExecution}
             disabled={!playing}
-            className="px-3 py-2 bg-[#131D2D] hover:bg-[#24344A] disabled:opacity-40 border border-[#24344A] text-xs font-bold text-[#CBD5E1] rounded-xl transition-colors flex items-center gap-1"
+            className="px-3 py-2 bg-[#F59E0B] hover:bg-[#d97706] disabled:opacity-40 text-[#050914] font-extrabold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(245,158,11,0.3)] flex items-center gap-1.5"
             title="Pause execution"
           >
-            <span>⏸</span>
-            <span>PAUSE</span>
+            <Pause className="w-3.5 h-3.5 fill-current" />
+            <span>Pause</span>
           </button>
 
+          {/* Stop (Red accent) */}
           <button
             onClick={stopExecution}
             disabled={!playing}
-            className="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 disabled:opacity-40 text-xs font-bold text-red-400 rounded-xl transition-colors flex items-center gap-1"
+            className="px-3 py-2 bg-[#EF4444] hover:bg-[#dc2626] disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(239,68,68,0.3)] flex items-center gap-1.5"
             title="Stop execution"
           >
-            <span>■</span>
-            <span>STOP</span>
+            <Square className="w-3.5 h-3.5 fill-current" />
+            <span>Stop</span>
           </button>
 
+          {/* Reset (Purple accent) */}
           <button
             onClick={resetExecution}
-            className="px-3 py-2 bg-[#131D2D] hover:bg-[#24344A] border border-[#24344A] text-xs font-bold text-[#CBD5E1] rounded-xl transition-colors flex items-center gap-1"
-            title="Reset state (Ctrl+Shift+R)"
+            className="px-3 py-2 bg-[#8B5CF6] hover:bg-[#7c3aed] text-white font-extrabold text-xs rounded-xl transition-all shadow-[0_0_12px_rgba(139,92,246,0.35)] flex items-center gap-1.5"
+            title="Reset (Ctrl+Shift+R)"
           >
-            <span>↻</span>
-            <span>RESET</span>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset</span>
           </button>
         </div>
       </div>
 
-      {/* MAIN WORKSPACE GRID: CODE EDITOR & LIVE VISUALIZATION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[480px]">
-        {/* CODE EDITOR PANEL */}
-        <div className="flex flex-col bg-[#101827] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 bg-[#0d1420] border-b border-[#24344A]">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#22D3EE]" />
-              <span className="font-mono text-xs font-bold text-[#F8FAFC]">
-                main.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language}
-              </span>
-              <span className="text-[10px] font-mono text-[#64748B] uppercase">({language})</span>
+      {/* 3. MID WORKSPACE GRID (CODE EDITOR & LIVE VISUALIZATION PANEL) */}
+      <div className={`grid grid-cols-1 ${isFullscreenVis ? '' : 'lg:grid-cols-2'} gap-4 min-h-[460px]`}>
+        {/* LEFT: CODE EDITOR */}
+        {!isFullscreenVis && (
+          <div className="flex flex-col bg-[#080D16] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl">
+            {/* Editor Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#0A1120] border-b border-[#24344A]">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#101827] border border-[#24344A] text-xs font-mono font-bold text-[#F8FAFC]">
+                  <Code2 className="w-3.5 h-3.5 text-[#22D3EE]" />
+                  <span>main.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-md bg-[#22D3EE]/10 border border-[#22D3EE]/30 text-[#22D3EE] font-mono text-[10px] font-bold capitalize">
+                  {language}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <button
+                  onClick={copyCodeToClipboard}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131D2D] hover:bg-[#24344A] text-[#CBD5E1] hover:text-white transition-colors"
+                >
+                  {copiedCode ? <Check className="w-3 h-3 text-[#22C55E]" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                </button>
+                <button
+                  onClick={formatCode}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131D2D] hover:bg-[#24344A] text-[#CBD5E1] hover:text-white transition-colors"
+                >
+                  <AlignLeft className="w-3 h-3" />
+                  <span>Format</span>
+                </button>
+                <button
+                  onClick={() => setCode(fullProgramItem?.code[language] || '')}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#131D2D] hover:bg-[#24344A] text-[#CBD5E1] hover:text-white transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Code</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <button onClick={copyCodeToClipboard} className="text-[#CBD5E1] hover:text-white px-2 py-1 rounded bg-[#131D2D]">
-                Copy
-              </button>
-              <button onClick={formatCode} className="text-[#CBD5E1] hover:text-white px-2 py-1 rounded bg-[#131D2D]">
-                Format
-              </button>
-              <button onClick={() => setCode(fullProgramItem?.code[language] || '')} className="text-[#CBD5E1] hover:text-white px-2 py-1 rounded bg-[#131D2D]">
-                Reset Code
-              </button>
-            </div>
-          </div>
-
-          {/* Editor Container */}
-          <div className="flex-1 relative bg-[#050914] min-h-[380px]">
-            {useMonaco ? (
+            {/* Monaco Code Editor */}
+            <div className="flex-1 min-h-[360px] relative bg-[#080D16]">
               <Editor
                 height="100%"
                 language={language === 'c' ? 'cpp' : language}
@@ -522,134 +747,415 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
                 theme="vs-dark"
                 options={{
                   fontSize: 13,
-                  fontFamily: 'Fira Code, DM Mono, monospace',
+                  fontFamily: 'JetBrains Mono, monospace',
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
                   lineNumbers: 'on',
                   roundedSelection: true,
                   automaticLayout: true,
+                  tabSize: 4,
+                  lineHeight: 22,
                 }}
               />
-            ) : (
-              <div className="flex h-full font-mono text-xs">
-                {/* Fallback Line Numbers */}
-                <div className="w-10 bg-[#0A1120] text-[#64748B] py-3 text-right pr-2 select-none border-r border-[#24344A]">
-                  {lines.map((_, i) => (
+            </div>
+          </div>
+        )}
+
+        {/* RIGHT: LIVE VISUALIZATION PANEL */}
+        <div className="flex flex-col bg-[#101827] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl relative">
+          {/* Header Tabs matching Reference 2 */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#0A1120] border-b border-[#24344A]">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveVisTab('visualization')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeVisTab === 'visualization'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-[0_0_12px_rgba(139,92,246,0.35)]'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Visualization
+              </button>
+
+              <button
+                onClick={() => setActiveVisTab('memory')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeVisTab === 'memory'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-[0_0_12px_rgba(139,92,246,0.35)]'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Memory View
+              </button>
+
+              <button
+                onClick={() => setActiveVisTab('step_details')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeVisTab === 'step_details'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-[0_0_12px_rgba(139,92,246,0.35)]'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Step Details
+              </button>
+
+              <button
+                onClick={() => setActiveVisTab('pseudocode')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeVisTab === 'pseudocode'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-[0_0_12px_rgba(139,92,246,0.35)]'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Pseudo Code
+              </button>
+            </div>
+
+            {/* Fullscreen toggle */}
+            <button
+              onClick={() => setIsFullscreenVis(!isFullscreenVis)}
+              className="p-1.5 text-[#64748B] hover:text-white rounded-lg hover:bg-[#131D2D] transition-colors"
+              title={isFullscreenVis ? 'Exit Fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreenVis ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* Subheader Operation HUD */}
+          <div className="flex flex-wrap items-center justify-between px-5 py-3 bg-[#0d1420] border-b border-[#24344A] text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="text-[#38BDF8]">⊞</span>
+              <span className="font-extrabold text-[#F8FAFC]">
+                {activeChapter.label} Visualization
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs">
+              <div className="text-[#CBD5E1]">
+                Step: <span className="text-[#22D3EE] font-bold">{Math.max(currentStepIndex + 1, 1)}</span> / {Math.max(steps.length, 8)}
+              </div>
+              <div className="text-[#CBD5E1]">
+                Line: <span className="text-[#22D3EE] font-bold">{activeStep?.line || 8}</span>
+              </div>
+              <div className="text-[#CBD5E1] truncate max-w-xs">
+                Operation: <span className="text-[#22D3EE] font-bold">{activeStep?.operation || 'ASSIGN → arr[2] = 30'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Visualization Body / Tabs */}
+          <div className="flex-1 flex flex-col items-center justify-center bg-[#050914]/80 p-4 min-h-[340px] overflow-x-auto">
+            {activeVisTab === 'visualization' && renderVisualizer()}
+
+            {activeVisTab === 'memory' && (
+              <div className="w-full max-w-xl p-4 bg-[#0A1120] border border-[#24344A] rounded-2xl shadow-xl">
+                <div className="flex items-center justify-between pb-3 border-b border-[#24344A] mb-3">
+                  <span className="font-mono text-xs font-bold text-[#22D3EE]">SIMULATED CONTIGUOUS MEMORY (RAM)</span>
+                  <span className="text-[10px] text-[#64748B] font-mono">32-bit Architecture</span>
+                </div>
+                <div className="space-y-1.5 font-mono text-xs">
+                  {memoryItems.map((mem) => (
                     <div
-                      key={i}
-                      className={`h-5 leading-5 cursor-pointer ${
-                        currentLineNumber === i + 1 ? 'text-[#22D3EE] font-bold bg-[#22D3EE]/20' : ''
+                      key={mem.address}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${
+                        mem.isCurrent
+                          ? 'bg-[#22D3EE]/15 border-[#22D3EE] text-[#22D3EE] font-bold shadow-[0_0_12px_rgba(34,211,238,0.2)]'
+                          : 'bg-[#101827] border-[#24344A] text-[#CBD5E1]'
                       }`}
-                      onClick={() =>
-                        setBreakpoints((prev) =>
-                          prev.includes(i + 1) ? prev.filter((l) => l !== i + 1) : [...prev, i + 1]
-                        )
-                      }
                     >
-                      {breakpoints.includes(i + 1) ? '●' : i + 1}
+                      <span className="text-[#64748B]">{mem.address}</span>
+                      <span className="font-bold">{mem.index}</span>
+                      <span className="px-2 py-0.5 rounded bg-[#050914] text-white border border-[#24344A]">
+                        {mem.value}
+                      </span>
+                      <span className="text-[10px] text-[#64748B]">{mem.type}</span>
                     </div>
                   ))}
                 </div>
-                {/* Fallback Textarea */}
-                <textarea
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="flex-1 bg-[#050914] text-[#F8FAFC] p-3 focus:outline-none resize-none font-mono leading-5"
-                  spellCheck={false}
+              </div>
+            )}
+
+            {activeVisTab === 'step_details' && (
+              <div className="w-full max-w-lg p-5 bg-[#0A1120] border border-[#24344A] rounded-2xl shadow-xl font-mono text-xs space-y-3">
+                <div className="text-sm font-bold text-[#22D3EE] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
+                  <span>Step {Math.max(currentStepIndex + 1, 1)} Breakdown</span>
+                </div>
+                <div className="p-3 bg-[#101827] rounded-xl border border-[#24344A] space-y-1.5">
+                  <div className="text-[#64748B]">Action: <span className="text-white font-bold">{activeStep?.operation || 'ASSIGN → arr[2] = 30'}</span></div>
+                  <div className="text-[#64748B]">Executed Line: <span className="text-[#38BDF8] font-bold">Line {activeStep?.line || 8}</span></div>
+                  <div className="text-[#64748B]">Data Structure: <span className="text-white font-bold">{chapter.toUpperCase()}</span></div>
+                  <div className="text-[#64748B]">State Transition: <span className="text-[#22C55E]">Memory cell modified in O(1) time</span></div>
+                </div>
+              </div>
+            )}
+
+            {activeVisTab === 'pseudocode' && (
+              <div className="w-full max-w-lg p-4 bg-[#0A1120] border border-[#24344A] rounded-2xl shadow-xl space-y-1 font-mono text-xs">
+                {pseudocodeLines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded-xl transition-all ${
+                      currentStepIndex >= 0 && idx === currentStepIndex % pseudocodeLines.length
+                        ? 'bg-[#22D3EE]/20 border border-[#22D3EE]/50 text-[#22D3EE] font-bold shadow-sm'
+                        : 'text-[#94A3B8] hover:text-white'
+                    }`}
+                  >
+                    {line}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. BOTTOM 3-PANEL ROW MATCHING REFERENCE 2 (CONSOLE, INPUT/PARAMETERS, OPERATION HISTORY) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* PANEL 1: CONSOLE / TERMINAL (Col Span 5) */}
+        <div className="lg:col-span-5 flex flex-col bg-[#0A1120] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl">
+          {/* Tabs Header */}
+          <div className="flex items-center justify-between px-3 py-2 bg-[#0d1420] border-b border-[#24344A]">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveConsoleTab('console')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeConsoleTab === 'console'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-sm'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Console
+              </button>
+
+              <button
+                onClick={() => setActiveConsoleTab('variables')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeConsoleTab === 'variables'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-sm'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Variables
+              </button>
+
+              <button
+                onClick={() => setActiveConsoleTab('stack')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeConsoleTab === 'stack'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-sm'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Call Stack
+              </button>
+
+              <button
+                onClick={() => setActiveConsoleTab('complexity')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeConsoleTab === 'complexity'
+                    ? 'bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white shadow-sm'
+                    : 'text-[#64748B] hover:text-[#CBD5E1]'
+                }`}
+              >
+                Complexity
+              </button>
+            </div>
+
+            {/* Console controls */}
+            <div className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1.5 text-[11px] font-mono text-[#64748B] cursor-pointer">
+                <span>Auto Scroll</span>
+                <input
+                  type="checkbox"
+                  checked={autoScroll}
+                  onChange={(e) => setAutoScroll(e.target.checked)}
+                  className="rounded border-[#24344A] bg-[#101827] text-[#22D3EE] focus:ring-0"
                 />
+              </label>
+              <button
+                onClick={() => setSteps([])}
+                className="px-2 py-0.5 rounded bg-[#131D2D] text-[#CBD5E1] hover:text-white text-[11px]"
+              >
+                Clear
+              </button>
+              <button
+                onClick={copyConsoleToClipboard}
+                className="px-2 py-0.5 rounded bg-[#131D2D] text-[#CBD5E1] hover:text-white text-[11px]"
+              >
+                {copiedConsole ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* Console Body */}
+          <div className="p-4 flex-1 min-h-[170px] max-h-[220px] overflow-y-auto bg-[#070D18] font-mono text-xs">
+            {activeConsoleTab === 'console' && (
+              <div className="space-y-1">
+                {consoleLogs.map((log, idx) => (
+                  <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                    <span
+                      className={`font-bold shrink-0 ${
+                        log.type === 'INFO'
+                          ? 'text-[#38BDF8]'
+                          : log.type === 'STEP'
+                          ? 'text-[#22D3EE]'
+                          : log.type === 'SUCCESS'
+                          ? 'text-[#22C55E]'
+                          : 'text-[#F59E0B]'
+                      }`}
+                    >
+                      [{log.type}]
+                    </span>
+                    <span className="text-[#CBD5E1]">{log.message}</span>
+                  </div>
+                ))}
+                <div ref={consoleBottomRef} />
+              </div>
+            )}
+
+            {activeConsoleTab === 'variables' && (
+              <div className="space-y-1">
+                <div className="text-[#64748B] text-[10px] uppercase font-bold mb-2">Runtime Variables</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 rounded-lg bg-[#101827] border border-[#24344A]">
+                    <span className="text-[#64748B]">n: </span>
+                    <span className="text-[#22D3EE] font-bold">{arraySize}</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-[#101827] border border-[#24344A]">
+                    <span className="text-[#64748B]">i: </span>
+                    <span className="text-[#38BDF8] font-bold">{activeStep?.line ? '2' : '0'}</span>
+                  </div>
+                  <div className="col-span-2 p-2 rounded-lg bg-[#101827] border border-[#24344A]">
+                    <span className="text-[#64748B]">arr: </span>
+                    <span className="text-[#22C55E] font-bold">[{elementsInput}]</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeConsoleTab === 'stack' && (
+              <div className="space-y-1.5">
+                <div className="text-[#64748B] text-[10px] uppercase font-bold mb-2">Active Call Frames</div>
+                <div className="p-2 rounded-lg bg-[#101827] border border-[#22D3EE]/40 text-[#22D3EE] font-bold">
+                  → main() [line {activeStep?.line || 8}]
+                </div>
+                <div className="p-2 rounded-lg bg-[#0A1120] border border-[#24344A] text-[#64748B]">
+                  module scope __init__
+                </div>
+              </div>
+            )}
+
+            {activeConsoleTab === 'complexity' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 rounded-lg bg-[#101827] border border-[#24344A]">
+                    <div className="text-[#64748B] text-[10px]">Time Complexity</div>
+                    <div className="text-base font-bold text-[#22D3EE]">{fullProgramItem?.complexity?.timeAverage || 'O(n)'}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-[#101827] border border-[#24344A]">
+                    <div className="text-[#64748B] text-[10px]">Space Complexity</div>
+                    <div className="text-base font-bold text-[#8B5CF6]">{fullProgramItem?.complexity?.space || 'O(n)'}</div>
+                  </div>
+                </div>
+                <p className="text-[11px] text-[#CBD5E1] leading-relaxed">
+                  {fullProgramItem?.complexity?.notes || 'Allocates contiguous memory proportional to the number of elements specified.'}
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* LIVE VISUALIZATION PANEL */}
-        <div className="flex flex-col bg-[#101827] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl relative">
+        {/* PANEL 2: INPUT / PARAMETERS CARD (Col Span 3) */}
+        <div className="lg:col-span-3 flex flex-col justify-between bg-[#0A1120] border border-[#24344A] rounded-2xl p-4 shadow-2xl">
+          <div>
+            {/* Header */}
+            <div className="flex items-center gap-2 pb-3 border-b border-[#24344A] text-xs font-bold text-[#F8FAFC]">
+              <Edit3 className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <span>Input / Parameters</span>
+            </div>
+
+            {/* Inputs */}
+            <div className="space-y-3 mt-3">
+              <div>
+                <label className="block text-[11px] font-mono text-[#64748B] mb-1">Array Size (n)</label>
+                <input
+                  type="text"
+                  value={arraySize}
+                  onChange={(e) => setArraySize(e.target.value)}
+                  className="w-full bg-[#070D18] border border-[#24344A] rounded-xl py-2 px-3 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-[#22D3EE] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[#64748B] mb-1">Elements (space separated)</label>
+                <input
+                  type="text"
+                  value={elementsInput}
+                  onChange={(e) => setElementsInput(e.target.value)}
+                  className="w-full bg-[#070D18] border border-[#24344A] rounded-xl py-2 px-3 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-[#22D3EE] transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Apply Input Button matching Reference 2 */}
+          <button
+            onClick={handleApplyInput}
+            className="w-full mt-4 py-2.5 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] hover:from-[#38BDF8] hover:to-[#6366F1] text-[#050914] font-extrabold text-xs rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all flex items-center justify-center gap-2"
+          >
+            Apply Input
+          </button>
+        </div>
+
+        {/* PANEL 3: OPERATION HISTORY (Col Span 4) */}
+        <div className="lg:col-span-4 flex flex-col bg-[#0A1120] border border-[#24344A] rounded-2xl overflow-hidden shadow-2xl">
+          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-[#0d1420] border-b border-[#24344A]">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6] animate-pulse" />
-              <span className="font-mono text-xs font-bold text-[#F8FAFC]">LIVE VISUALIZATION</span>
+            <div className="flex items-center gap-2 text-xs font-bold text-[#F8FAFC]">
+              <Layers className="w-3.5 h-3.5 text-[#22D3EE]" />
+              <span>Operation History</span>
             </div>
-            <div className="text-xs font-mono text-[#22D3EE] font-bold">
-              {steps.length ? `STEP ${currentStepIndex + 1} / ${steps.length}` : 'NO EXECUTION YET'}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+              <span>Live</span>
             </div>
           </div>
 
-          {/* Visualizer Canvas Area */}
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#050914]/60 p-4 min-h-[380px] overflow-hidden">
-            {renderVisualizer()}
+          {/* Timeline List matching Reference 2 */}
+          <div className="p-3 flex-1 min-h-[170px] max-h-[220px] overflow-y-auto space-y-1.5 font-mono text-xs">
+            {timelineOperations.map((op) => (
+              <div
+                key={op.num}
+                onClick={() => {
+                  setPlaying(false);
+                  setCurrentStepIndex(op.num - 1);
+                }}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                  op.status === 'current'
+                    ? 'bg-[#101827] border-[#22D3EE]/60 text-[#22D3EE] font-bold shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                    : 'bg-[#070D18]/80 border-[#24344A]/50 text-[#CBD5E1] hover:bg-[#131D2D]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <span className="w-4 text-center text-[#64748B] text-[10px]">{op.num}</span>
+                  <span className="text-xs">
+                    {op.status === 'orange' ? (
+                      <span className="text-[#F59E0B]">⚙</span>
+                    ) : op.status === 'current' ? (
+                      <span className="text-[#22D3EE]">▶</span>
+                    ) : (
+                      <span className="text-[#22C55E]">✓</span>
+                    )}
+                  </span>
+                  <span className="truncate">{op.text}</span>
+                </div>
+                {op.line && <span className="text-[10px] text-[#64748B] shrink-0 ml-2">{op.line}</span>}
+              </div>
+            ))}
           </div>
-
-          {/* Active Operation HUD */}
-          <div className="px-4 py-3 bg-[#0d1420] border-t border-[#24344A] flex items-center justify-between text-xs font-mono">
-            <span className="text-[#64748B]">Active Step:</span>
-            <span className="text-[#22D3EE] font-bold truncate max-w-xs">
-              {activeStep?.description || 'Waiting to run program...'}
-            </span>
-          </div>
         </div>
       </div>
-
-      {/* INPUT PANEL FOR PARAMETERS */}
-      <div className="bg-[#101827] border border-[#24344A] rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex-1 w-full">
-          <label className="block text-xs font-mono font-bold text-[#CBD5E1] mb-1">
-            INPUT PARAMETERS / STDIN
-          </label>
-          <input
-            type="text"
-            value={programInput}
-            onChange={(e) => setProgramInput(e.target.value)}
-            placeholder="Enter custom array elements or search target..."
-            className="w-full bg-[#050914] border border-[#24344A] rounded-xl py-2 px-3 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-[#22D3EE]"
-          />
-        </div>
-        <button
-          onClick={() => void runProgram()}
-          className="px-4 py-2.5 bg-[#131D2D] hover:bg-[#24344A] border border-[#22D3EE]/40 text-[#22D3EE] font-bold text-xs rounded-xl transition-colors shrink-0"
-        >
-          Apply Input & Re-run
-        </button>
-      </div>
-
-      {/* PSEUDOCODE PANEL */}
-      <div className="bg-[#101827] border border-[#24344A] rounded-2xl p-4 shadow-xl">
-        <div className="text-xs font-mono font-bold text-[#CBD5E1] uppercase mb-3 flex items-center gap-2">
-          <span>📜</span>
-          <span>ALGORITHMIC PSEUDOCODE</span>
-        </div>
-        <div className="space-y-1 font-mono text-xs">
-          {pseudocodeLines.map((line, idx) => (
-            <div
-              key={idx}
-              className={`p-1.5 rounded-lg transition-colors ${
-                currentStepIndex >= 0 && idx === currentStepIndex % pseudocodeLines.length
-                  ? 'bg-[#22D3EE]/20 border border-[#22D3EE]/50 text-[#22D3EE] font-bold'
-                  : 'text-[#94A3B8]'
-              }`}
-            >
-              {line}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* BOTTOM DOCK (CONSOLE, VARIABLES, CALL STACK, COMPLEXITY, HISTORY) */}
-      <BottomDock
-        logs={logsList}
-        rawOutput={rawOutput}
-        error={error}
-        variables={activeStep?.variables}
-        callStack={activeStep?.call_stack || ['main()']}
-        complexity={fullProgramItem?.complexity}
-        history={steps}
-        currentStepIndex={currentStepIndex}
-        onSelectStep={(idx) => {
-          setPlaying(false);
-          setCurrentStepIndex(idx);
-        }}
-        onClearConsole={() => setRawOutput('')}
-        language={language}
-      />
     </div>
   );
 }

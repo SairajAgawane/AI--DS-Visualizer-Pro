@@ -123,25 +123,36 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
         {/* Mobile Sidebar Toggle Button */}
         <button
           onClick={() => setMobileMenu(!mobileMenu)}
-          className="lg:hidden fixed bottom-4 right-4 z-50 p-3 bg-[#22D3EE] text-[#050914] font-bold rounded-full shadow-2xl"
+          className="lg:hidden fixed bottom-6 left-4 z-50 p-3 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#050914] font-bold rounded-full shadow-[0_0_20px_rgba(34,211,238,0.5)]"
           aria-label="Toggle Navigation Sidebar"
         >
           {mobileMenu ? '✕' : '☰'}
         </button>
 
-        {/* Collapsible Sidebar */}
+        {/* Collapsible Sidebar Matching Reference 2 */}
         <aside
-          className={`w-72 bg-[#0A1120] border-r border-[#24344A] flex flex-col z-40 transition-transform duration-300 ${
-            mobileMenu ? 'translate-x-0 fixed inset-y-0 left-0 top-14 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+          className={`w-64 bg-[#070D18] border-r border-[#24344A] flex flex-col z-40 transition-transform duration-300 ${
+            mobileMenu ? 'translate-x-0 fixed inset-y-0 left-0 top-16 shadow-2xl' : '-translate-x-full lg:translate-x-0'
           }`}
         >
-          <div className="p-4 border-b border-[#24344A]">
-            <div className="text-[10px] font-mono font-bold text-[#22D3EE] uppercase tracking-wider mb-1">DATA STRUCTURES</div>
-            <p className="text-xs text-[#64748B]">Click a chapter to expand programs</p>
+          {/* Sidebar Top Header */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="text-[10px] font-mono font-bold text-[#64748B] uppercase tracking-wider mb-3">
+              DATA STRUCTURES
+            </div>
+
+            {/* Program Editor Action Button */}
+            <div className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#0A1120] border border-[#22D3EE]/40 text-[#22D3EE] text-xs font-bold mb-3 shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">⊞</span>
+                <span>Program Editor</span>
+              </div>
+              <span className="text-xs text-[#22D3EE]">›</span>
+            </div>
           </div>
 
           {/* Chapter Navigation List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
             {chapters.map((item) => {
               const isChapterActive = chapterId === item.id;
               return (
@@ -149,22 +160,24 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
                   <button
                     aria-expanded={isChapterActive}
                     onClick={() => handleChapterSelect(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                       isChapterActive
-                        ? 'bg-[#131D2D] text-[#22D3EE] border border-[#22D3EE]/30 font-bold'
-                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#131D2D]/50'
+                        ? 'bg-[#101827] text-[#22D3EE] border border-[#22D3EE]/30 font-bold shadow-[0_0_10px_rgba(34,211,238,0.15)]'
+                        : 'text-[#CBD5E1] hover:text-white hover:bg-[#131D2D]/60'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-sm text-[#22D3EE]">{item.icon}</span>
+                      <span className="text-xs text-[#22D3EE]">{item.icon}</span>
                       <span>{item.label}</span>
                     </div>
-                    <span className="text-[10px] text-[#64748B]">{isChapterActive ? '⌄' : '›'}</span>
+                    <span className="text-[11px] text-[#64748B]">
+                      {isChapterActive ? '⌄' : '›'}
+                    </span>
                   </button>
 
                   {/* Program Sub-menu */}
                   {isChapterActive && (
-                    <div className="pl-6 pr-2 py-1 space-y-1 bg-[#050914]/40 border-l border-[#24344A] ml-4 my-1 rounded-r-lg">
+                    <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-[#24344A]/60 ml-4 my-1">
                       {item.programs.map((program) => {
                         const isProgActive = selectedProgram === program.id;
                         return (
@@ -174,13 +187,13 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
                               e.stopPropagation();
                               handleChapterSelect(item.id, program.id);
                             }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2 ${
                               isProgActive
-                                ? 'bg-[#22D3EE]/15 text-[#22D3EE] font-bold border border-[#22D3EE]/30'
+                                ? 'bg-[#22D3EE]/15 text-[#22D3EE] font-bold border border-[#22D3EE]/40 shadow-sm'
                                 : 'text-[#64748B] hover:text-[#CBD5E1] hover:bg-[#131D2D]/40'
                             }`}
                           >
-                            <span className="text-[10px]">·</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isProgActive ? 'bg-[#22D3EE]' : 'bg-[#64748B]'}`} />
                             <span className="truncate">{program.name}</span>
                           </button>
                         );
@@ -191,21 +204,10 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
               );
             })}
           </div>
-
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t border-[#24344A] bg-[#0d1420]">
-            <div className="flex items-center justify-between text-xs mb-1.5 font-semibold">
-              <span className="text-[#CBD5E1]">Mastery progress</span>
-              <span className="text-[#22D3EE] font-mono font-bold">80%</span>
-            </div>
-            <div className="w-full bg-[#050914] rounded-full h-1.5 overflow-hidden border border-[#24344A]">
-              <div className="bg-[#22D3EE] h-1.5 rounded-full" style={{ width: '80%' }} />
-            </div>
-          </div>
         </aside>
 
         {/* Main Workspace Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[#050914] relative">
           <ProgramEditor
             api={API}
             chapter={chapterId}
@@ -215,6 +217,35 @@ function PlaygroundWrapper({ user, onLogout }: { user: User; onLogout: () => voi
               localStorage.setItem(`aids_program_${chapterId}`, program);
             }}
           />
+
+          {/* Floating AI Copilot Mascot Widget matching Reference 2 */}
+          <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+            <div
+              onClick={() => setIsCopilotOpen(true)}
+              className="hidden sm:flex items-center gap-2 bg-[#0A1120]/90 border border-[#8B5CF6]/40 backdrop-blur-xl px-3.5 py-2 rounded-2xl shadow-[0_0_20px_rgba(139,92,246,0.25)] text-left cursor-pointer hover:border-[#8B5CF6] transition-all hover:scale-[1.02]"
+            >
+              <div className="text-[11px]">
+                <div className="font-bold text-[#F8FAFC] flex items-center gap-1">
+                  <span className="text-[#8B5CF6]">✨</span> AI Copilot
+                </div>
+                <div className="text-[10px] text-[#64748B]">
+                  Ask for explanations, hints, debugging help, and more!
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsCopilotOpen(true)}
+              className="relative w-12 h-12 rounded-full bg-gradient-to-tr from-[#22D3EE] via-[#6366F1] to-[#8B5CF6] p-[2px] shadow-[0_0_25px_rgba(139,92,246,0.5)] hover:scale-105 active:scale-95 transition-all group"
+              title="Open AI Copilot"
+              aria-label="Open AI Copilot"
+            >
+              <div className="w-full h-full rounded-full bg-[#070D18] flex items-center justify-center overflow-hidden">
+                <span className="text-xl group-hover:scale-110 transition-transform">🤖</span>
+              </div>
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#22D3EE] border-2 border-[#050914] animate-pulse" />
+            </button>
+          </div>
         </div>
       </div>
 
