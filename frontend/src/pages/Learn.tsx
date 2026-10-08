@@ -33,6 +33,7 @@ export default function Learn({ user, onLogout }: { user: any; onLogout: () => v
   ];
 
   return (
+  
     <div className="min-h-screen bg-[#050914] text-[#F8FAFC] font-sans flex flex-col">
       <Navbar user={user} onLogout={onLogout} onOpenCopilot={() => setIsCopilotOpen(true)} />
 
