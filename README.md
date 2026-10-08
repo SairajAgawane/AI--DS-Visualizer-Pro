@@ -1,174 +1,94 @@
-# AI-DS VISUALIZER PRO
+# AI-DS Visualizer Pro
 
-**Learn DSA. Ask AI. Execute. Visualize. Master.**
+AI-Powered Data Structures and Algorithms Interactive Learning & Visualization Platform.
 
-AI-DS Visualizer Pro is an interactive DSA learning workspace. Natural-language commands are converted into a small, validated operation language, executed by real Python data-structure implementations, and returned as step events for the React visualizer.
+## Requirements
 
-## What works
+- **Node.js**: v18.0.0 or higher (v20+ recommended)
+- **npm**: v9.0.0 or higher
+- *(Optional for backend services)*: Python 3.11+
 
-- Stack, queue, linked list, BST, heap, and graph execution
-- Safe local natural-language parser (no API key required for the demo)
-- Strict Pydantic validation and structured errors such as Stack Underflow
-- State snapshots, event history, operation complexity, and step controls
-- Animated React visualizers for linear, tree, and graph structures
-- Built-in DSA tutor with context-aware explanations
-- Challenges, sorting/searching algorithm endpoints, safe code pattern analysis, and educational code generation
-- SQLite operation history, progress, XP, and achievements endpoints
-- SQLite email/password accounts and optional Google Identity sign-in
-- Optional AI provider boundary can be added without exposing keys to the frontend
-- Authenticated Program Editor for user-entered C, C++, Java, and Python programs
-- Isolated subprocess execution with a five-second timeout, output limits, sanitized environment, and common dangerous-operation checks
-- Program output, compiler/runtime errors, line diagnostics, execution timeline, speed controls, and supported-operation visualization
+## Installation
 
-## Architecture
+Clone the repository and install all dependencies directly from the project root:
 
-`Login → Program Editor → language executor → output/errors + detected steps → timeline/visualizer`
-
-The natural-language DSA path still uses the allowlisted operation engine. The Program Editor uses a separate subprocess runner in a temporary directory. It never receives application secrets in its environment. A production deployment should run this runner inside a container or OS-level sandbox as well.
-
-The AI/parser layer can only produce allowlisted structured operations. It never executes pasted Python, JavaScript, shell, or model-generated code.
-
-## Run locally
-
-### Backend
-
-Requires Python 3.11+.
-
-```powershell
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+```bash
+git clone https://github.com/SairajAgawane/AI--DS-Visualizer-Pro.git
+cd AI--DS-Visualizer-Pro
+npm install
 ```
 
-### Frontend
+*(You can also run commands from inside the `frontend/` directory if preferred).*
 
-Requires Node.js 20+.
+## Development
 
-```powershell
-cd frontend
-npm install
+Start the local development server:
+
+```bash
 npm run dev
 ```
 
-Open `http://localhost:5173`. The frontend uses `VITE_API_URL` when set, otherwise `http://localhost:8000`.
+The application will be accessible at: `http://localhost:5173`
 
-## Authentication configuration
+## Production Build
 
-Email/password signup works locally after the backend starts. To enable Google sign-in:
+Compile TypeScript and build the production-optimized Vite bundle:
 
-1. Create a Google OAuth Web Client ID in Google Cloud Console.
-2. Add the same client ID to `backend/.env` as `GOOGLE_CLIENT_ID` and `frontend/.env` as `VITE_GOOGLE_CLIENT_ID`.
-3. Add `http://localhost:5173` to the OAuth client’s authorized JavaScript origins.
-4. Set a private `AUTH_SECRET` in `backend/.env`.
-
-Copy `backend/.env.example` as a starting point. Never commit `.env` or expose `GOOGLE_CLIENT_ID` from the backend secret configuration; the frontend client ID is public by Google design, while the signed app token secret remains backend-only.
-
-## Example commands
-
-- `Create a stack and push 10, 20 and 30.`
-- `Pop the top element.`
-- `Create a queue and enqueue 1, 2, 3.`
-- `Create linked list 10 20 30 and reverse the list.`
-- `Create a binary search tree using 50,30,70,20,40,60,80.`
-- `Create graph. Connect Pune to Mumbai with weight 2.`
-
-## API highlights
-
-- `GET /api/health`
-- `POST /api/ai/parse`
-- `POST /api/execute/`
-- `POST /api/chat/`
-- `POST /api/challenge/`
-- `GET|DELETE /api/history`
-- `GET /api/progress`, `GET /api/achievements`
-- `POST /api/algorithm/run`
-- `POST /api/code/analyze`, `POST /api/code/generate`
-
-## Tests and verification
-
-```powershell
-cd backend
-pytest -q
-cd ../frontend
+```bash
 npm run build
 ```
 
-The frontend production build is currently passing. If Python is not on PATH, install Python 3.11+ and rerun the backend commands.
+The compiled assets are generated in `frontend/dist`.
 
-## GitHub and Vercel deployment
+## Preview
 
-This repository is a two-service application:
+Preview the production build locally:
 
-- `frontend/` is a Vite React app and can be deployed to Vercel.
-- `backend/` is a FastAPI service that must run on a Python-capable host. It executes Python, C, C++, and Java programs in subprocesses, so it is not a static Vercel frontend function.
-
-### Vercel settings
-
-When importing this repository into Vercel, set **Root Directory** to `frontend`.
-
-- Framework preset: Vite
-- Build command: `npm run build`
-- Output directory: `dist`
-- Install command: `npm install`
-
-`frontend/vercel.json` provides the SPA fallback so direct refreshes of `/playground`, `/playground/array`, and other client routes resolve to the React app.
-
-### Environment variables
-
-Frontend (`frontend/.env` locally; Vercel Preview and Production settings):
-
-```text
-VITE_API_URL=https://YOUR_BACKEND_DOMAIN
-VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID
+```bash
+npm run preview
 ```
 
-`VITE_API_URL` must be the public HTTPS URL of the deployed FastAPI backend. Do not leave it as localhost in Vercel.
+## Environment Variables
 
-Backend (`backend/.env` on the backend host):
+Copy `.env.example` to create your local `.env`:
 
-```text
-DATABASE_URL=YOUR_POSTGRES_CONNECTION_STRING
-AUTH_SECRET=YOUR_LONG_RANDOM_SECRET
-CORS_ORIGINS=https://YOUR_VERCEL_DOMAIN,https://YOUR_CUSTOM_DOMAIN
-GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID
-AI_PROVIDER=local
-AI_API_KEY=
-AI_MODEL=
+```bash
+cp .env.example .env
 ```
 
-For local development, use the values in `backend/.env.example` and `frontend/.env.example`. Never commit `.env` files, database passwords, service-account files, or private keys. Because a database password was previously used during local setup, rotate that password before publishing the repository.
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | Backend API base URL | `http://localhost:8000` |
+| `VITE_GOOGLE_CLIENT_ID` | Optional Google OAuth Web Client ID | *(empty)* |
 
-### GitHub commands
+> **Security Note**: Never commit `.env` or sensitive credentials to GitHub. All `.env` files are strictly protected by `.gitignore`.
 
-Run these from the project root after reviewing `git status`:
+## Deployment
 
-```powershell
-git init
-git add .
-git commit -m "Prepare project for production deployment"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPOSITORY_URL
-git push -u origin main
-```
+### GitHub Repository
+- **Official Repository**: [https://github.com/SairajAgawane/AI--DS-Visualizer-Pro](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
+- **Default Branch**: `main`
 
-### Vercel process
+### Vercel Deployment
+- **Live Production URL**: [https://ai-ds-visualizer-c15ct0c07-sais-projects-3ea77644.vercel.app/](https://ai-ds-visualizer-c15ct0c07-sais-projects-3ea77644.vercel.app/)
+- **Configuration**: `vercel.json` includes client-side SPA rewrites (`"source": "/(.*)", "destination": "/index.html"`), ensuring routes like `/playground/array`, `/dashboard`, and `/admin` resolve without 404s.
+- Automatic deployments trigger on every push to `main`.
 
-1. Sign in to Vercel with GitHub.
-2. Import the repository.
-3. Set Root Directory to `frontend`.
-4. Add the frontend environment variables above for Preview and Production.
-5. Deploy the frontend.
-6. Deploy the FastAPI backend separately and add its public URL as `VITE_API_URL`.
-7. Set backend `CORS_ORIGINS` to the Vercel domain.
-8. Add the Vercel domain to Google OAuth authorized JavaScript origins if Google login is enabled.
-9. Test login, chapter routes, execution, console output, and the `/api/health` endpoint.
+---
 
-### Program Editor
+## Supported Chapters & Visualizers
 
-After login, select **Program Editor** in the sidebar. Choose C, C++, Java, or Python, load or paste a program, choose Very Slow through Very Fast, and click **Run Program**. The editor shows stdout, compiler/runtime errors, recognized data-structure steps, and play/pause/previous/next/reset controls.
-
-`POST /api/program/run` executes Python directly and compiles C/C++/Java when the corresponding local toolchain is installed. Java requires `javac` and `java` on PATH. Arbitrary code that cannot be safely mapped to a supported data structure still displays normal program output without a fabricated visualization.
-
-## Roadmap
-
-The next production additions are authentication, persisted learning profiles, full AVL/doubly-linked visualizers, live provider adapters, voice transcription, and richer challenge/viva flows.
+1. **Array**: Create, Traverse, Insert, Delete, Update, Linear Search
+2. **Stack**: Push, Pop, Peek, Display, Array Stack, Linked Stack
+3. **Queue**: Enqueue, Dequeue, Front, Rear, Display
+4. **Circular Queue**: Enqueue, Dequeue, Wrap Around
+5. **Linked List**: Create, Head/Tail/Position Insert, Delete, Search, Traverse
+6. **Doubly Linked List**: Forward & Backward Traversals, Insert, Delete
+7. **Binary Tree**: Inorder, Preorder, Postorder, Level-Order
+8. **Binary Search Tree (BST)**: Insert, Search, Delete, Tree Traversals
+9. **Heap**: Create, Insert, Bubble Up, Extract Min/Max, Heap Sort
+10. **Graph**: Vertices, Weighted/Unweighted Edges, BFS, DFS
+11. **Searching**: Linear Search, Binary Search
+12. **Sorting**: Bubble Sort, Selection Sort, Insertion Sort, Merge Sort, Quick Sort
+13. **Hash Table**: Buckets, Key-Value Insertion, Search, Collision Handling
+14. **Recursion**: Factorial, Fibonacci, Recursive Sum, Binary Search
