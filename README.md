@@ -1,94 +1,81 @@
-# AI-DS Visualizer Pro
+<div align="center">
 
-AI-Powered Data Structures and Algorithms Interactive Learning & Visualization Platform.
+# 🧠 AI-DS Visualizer Pro
 
-## Requirements
+**Next-Generation Algorithmic Thinking Platform powered by Interactive Visual State Machines & AI Copilot**
 
-- **Node.js**: v18.0.0 or higher (v20+ recommended)
-- **npm**: v9.0.0 or higher
-- *(Optional for backend services)*: Python 3.11+
+[![Live Application](https://img.shields.io/badge/Production-Live%20Demo-00C7B7?style=for-the-badge&logo=vercel&logoColor=white)](https://ai-ds-visualizer-pro.vercel.app/dashboard)
+[![GitHub Repository](https://img.shields.io/badge/Repository-SairajAgawane%2FAI--DS--Visualizer--Pro-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F5A623?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/Build-Passing-2EA44F?style=for-the-badge)]()
+[![Node Version](https://img.shields.io/badge/Node.js-%E2%89%A518.0.0-339933?style=for-the-badge&logo=node.js&logoColor=white)]()
 
-## Installation
+<br />
 
-Clone the repository and install all dependencies directly from the project root:
+[Explore Dashboard](https://ai-ds-visualizer-pro.vercel.app/dashboard) • [Report a Bug](#-bug-reporting--issue-lifecycle) • [Architecture](#-system-architecture--state-synchronization) • [Run Locally](#-quick-start--local-development)
 
-```bash
-git clone https://github.com/SairajAgawane/AI--DS-Visualizer-Pro.git
-cd AI--DS-Visualizer-Pro
-npm install
-```
-
-*(You can also run commands from inside the `frontend/` directory if preferred).*
-
-## Development
-
-Start the local development server:
-
-```bash
-npm run dev
-```
-
-The application will be accessible at: `http://localhost:5173`
-
-## Production Build
-
-Compile TypeScript and build the production-optimized Vite bundle:
-
-```bash
-npm run build
-```
-
-The compiled assets are generated in `frontend/dist`.
-
-## Preview
-
-Preview the production build locally:
-
-```bash
-npm run preview
-```
-
-## Environment Variables
-
-Copy `.env.example` to create your local `.env`:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `VITE_API_URL` | Backend API base URL | `http://localhost:8000` |
-| `VITE_GOOGLE_CLIENT_ID` | Optional Google OAuth Web Client ID | *(empty)* |
-
-> **Security Note**: Never commit `.env` or sensitive credentials to GitHub. All `.env` files are strictly protected by `.gitignore`.
-
-## Deployment
-
-### GitHub Repository
-- **Official Repository**: [https://github.com/SairajAgawane/AI--DS-Visualizer-Pro](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
-- **Default Branch**: `main`
-
-### Vercel Deployment
-- **Live Production URL**: [https://ai-ds-visualizer-c15ct0c07-sais-projects-3ea77644.vercel.app/](https://ai-ds-visualizer-c15ct0c07-sais-projects-3ea77644.vercel.app/)
-- **Configuration**: `vercel.json` includes client-side SPA rewrites (`"source": "/(.*)", "destination": "/index.html"`), ensuring routes like `/playground/array`, `/dashboard`, and `/admin` resolve without 404s.
-- Automatic deployments trigger on every push to `main`.
+</div>
 
 ---
 
-## Supported Chapters & Visualizers
+## 📑 Table of Contents
 
-1. **Array**: Create, Traverse, Insert, Delete, Update, Linear Search
-2. **Stack**: Push, Pop, Peek, Display, Array Stack, Linked Stack
-3. **Queue**: Enqueue, Dequeue, Front, Rear, Display
-4. **Circular Queue**: Enqueue, Dequeue, Wrap Around
-5. **Linked List**: Create, Head/Tail/Position Insert, Delete, Search, Traverse
-6. **Doubly Linked List**: Forward & Backward Traversals, Insert, Delete
-7. **Binary Tree**: Inorder, Preorder, Postorder, Level-Order
-8. **Binary Search Tree (BST)**: Insert, Search, Delete, Tree Traversals
-9. **Heap**: Create, Insert, Bubble Up, Extract Min/Max, Heap Sort
-10. **Graph**: Vertices, Weighted/Unweighted Edges, BFS, DFS
-11. **Searching**: Linear Search, Binary Search
-12. **Sorting**: Bubble Sort, Selection Sort, Insertion Sort, Merge Sort, Quick Sort
-13. **Hash Table**: Buckets, Key-Value Insertion, Search, Collision Handling
-14. **Recursion**: Factorial, Fibonacci, Recursive Sum, Binary Search
+- [Executive Summary](#-executive-summary)
+- [Key Architectural Features](#-key-architectural-features)
+- [Core Data Structures & Algorithmic Modules](#-core-data-structures--algorithmic-modules)
+- [AI Student Copilot (Gemini API Integration)](#-ai-student-copilot-gemini-api-integration)
+- [Technology Stack](#-technology-stack)
+- [System Architecture & State Synchronization](#-system-architecture--state-synchronization)
+- [Project Directory Layout](#-project-directory-layout)
+- [Quick Start & Local Development](#-quick-start--local-development)
+- [Environment Configuration & Secrets](#-environment-configuration--secrets)
+- [Production Build & Deployment](#-production-build--deployment)
+- [Bug Reporting & Issue Lifecycle](#-bug-reporting--issue-lifecycle)
+- [Troubleshooting & Common Failure Modes](#-troubleshooting--common-failure-modes)
+- [Security Posture](#-security-posture)
+- [Roadmap & Planned Capabilities](#-roadmap--planned-capabilities)
+- [Contribution Guidelines](#-contribution-guidelines)
+- [License & Author](#-license--author)
+
+---
+
+## 📌 Executive Summary
+
+**AI-DS Visualizer Pro** is an open-source technical education platform engineered to eliminate the abstraction barrier when mastering Data Structures and Algorithms (DSA).
+
+Computer science students frequently struggle to mentally map pointer shifts, recursion frames, graph traversal orderings, and dynamic array reallocation. Traditional static debuggers display memory addresses rather than conceptual topologies. **AI-DS Visualizer Pro** couples a modular visualization engine with an in-context **AI Student Copilot**, transforming abstract code structures into dynamic, controllable visual state transitions with line-by-line semantic explanations.
+
+---
+
+## ⚡ Key Architectural Features
+
+- **Deterministic Step-Through Engine:** Granular control over execution flows, including play, pause, step forward, step backward, and speed modulation (`0.25x` to `4x`).
+- **Context-Aware AI Copilot:** Connected to Google Gemini, evaluating code blocks, explaining state changes, and providing real-time computational complexity breakdowns.
+- **Dynamic Structural Rendering:** Custom-rendered SVG and HTML5 Canvas layouts for tree balancing, graph relaxations, and linked pointers.
+- **Polyglot Code Reference Engine:** View equivalent implementations and standard library idioms across **C++**, **Java**, **Python**, and **JavaScript**.
+- **Resilient Client-Side Execution:** Zero server execution overhead for visualizations; state mutations run locally inside the client runtime.
+
+---
+
+## 📊 Core Data Structures & Algorithmic Modules
+
+### 1. Linear Data Structures
+- **Arrays & Dynamic Slices:** Index lookup, linear scanning, in-place rotation, dynamic capacity expansion.
+- **Stacks & Queues:** LIFO/FIFO mechanics, array-backed vs. pointer-backed stores, circular queue modulo boundaries.
+- **Singly & Doubly Linked Lists:** Head/tail pointer tracking, node insertions, reversals, cycle detection (Floyd's algorithm).
+
+### 2. Hierarchical Trees & Heaps
+- **Binary Search Trees (BST):** In-order, pre-order, post-order, and level-order traversals, node deletion with successor substitution.
+- **Binary Heaps:** Min-Heap/Max-Heap array representation, percolate-up (heapify-up) and percolate-down (heapify-down) routines.
+
+### 3. Graphs
+- **Graph Representations:** Adjacency List and Adjacency Matrix dynamic toggling.
+- **Traversal & Shortest Path:** Breadth-First Search (BFS queue), Depth-First Search (DFS recursion stack), Dijkstra’s shortest path edge relaxations.
+
+### 4. Sorting & Searching
+- **Comparison Sorts:** Bubble Sort, Selection Sort, Insertion Sort, Quick Sort (pivot partitioning), Merge Sort (auxiliary array merges).
+- **Searching Algorithms:** Linear Search ($\mathcal{O}(n)$) vs. Binary Search ($\mathcal{O}(\log n)$) on sorted contiguous blocks.
+
+---
+
+## 🤖 AI Student Copilot (Gemini API Integration)
