@@ -1,154 +1,339 @@
 # AI-DS Visualizer Pro
 
-AI-DS Visualizer Pro is an AI-assisted learning platform designed to make Data Structures and Algorithms easier to understand through interactive visualizations, step-by-step execution, and contextual explanations.
+AI-DS Visualizer Pro is an interactive Data Structures and Algorithms learning platform with step-by-step visualizations, executable programs, progress tracking, and an AI-assisted tutor.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://ai-ds-visualizer-pro.vercel.app/)
-[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github)](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
-[![Status](https://img.shields.io/badge/Status-In%20Development-f59e0b?style=flat-square)](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
+[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=flat-square&logo=react&logoColor=111827)](frontend/)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](backend/)
+[![License](https://img.shields.io/badge/License-Not%20specified-lightgrey?style=flat-square)](#license)
 
-## Overview
+## Why this project exists
 
-Learning Data Structures and Algorithms can be difficult when code, execution flow, and theory are presented separately. AI-DS Visualizer Pro is intended to bring these concepts together in one focused learning experience.
+DSA is easier to learn when the learner can see the state of a data structure change while an operation executes. AI-DS Visualizer Pro connects code, execution events, complexity metadata, visual state, and learning progress in one workspace.
 
-The platform is designed to help learners:
+## Features
 
-- understand how algorithms execute step by step;
-- connect source code with visual changes in data structures;
-- explore concepts through interactive learning experiences; and
-- use AI-assisted explanations to clarify difficult topics.
+- Interactive visualizers for arrays, stacks, queues, linked lists, trees, heaps, graphs, searching, sorting, hash tables, and recursion.
+- Step navigation through execution events, state snapshots, and complexity information.
+- Program execution for Python, C, C++, and Java.
+- Safe code-to-visualization recognition for supported educational patterns.
+- Natural-language commands for supported data structures and operations.
+- In-app tutor responses based on the current data structure and visible state.
+- Authentication, protected routes, user profiles, progress tracking, streaks, history, and achievements.
+- Admin panel with user and activity telemetry endpoints.
+- SQLite for local development and PostgreSQL-compatible configuration for hosted deployments.
+- Responsive React interface with animated visual components using Framer Motion and React Flow.
 
-## Core objectives
+## DSA coverage
 
-- Make DSA concepts more visual and approachable.
-- Help beginners understand algorithm execution instead of memorizing code.
-- Provide explanations that are connected to the learner’s current topic.
-- Create a practical environment for experimenting with algorithms.
+### Data structures and learning chapters
 
-## Planned capabilities
+The frontend catalog currently defines 14 chapters and 80 learning programs:
 
-The project vision includes the following capabilities:
-
-| Capability | Purpose |
+| Chapter | Examples of supported topics |
 | --- | --- |
-| Interactive visualization | Show how data structures and algorithms change during execution. |
-| Step-by-step learning | Break complex operations into understandable execution steps. |
-| Code-focused exploration | Connect algorithm behavior with the code being studied. |
-| AI-assisted explanations | Use Google Gemini to provide additional explanations and learning support. |
-| Beginner-friendly interface | Make DSA concepts easier to explore and revisit. |
+| Array | Create, traverse, insert, delete, update, search |
+| Stack | Push, pop, peek, display, array-based and linked-list implementations |
+| Queue | Enqueue, dequeue, front, rear, display |
+| Circular Queue | Wrap-around enqueue/dequeue behavior |
+| Linked List | Creation, insertion, deletion, search, traversal |
+| Doubly Linked List | Forward/backward traversal, insertion, deletion, search |
+| Binary Tree | Creation, insertion, inorder, preorder, postorder, level order |
+| Binary Search Tree | Insert, search, delete, inorder, preorder, postorder |
+| Heap | Insert, heapify, extract min/max, heap sort |
+| Graph | Vertices, edges, BFS, DFS, adjacency display |
+| Searching | Linear search and binary search |
+| Sorting | Bubble, selection, insertion, merge, and quick sort |
+| Hash Table | Insert, search, delete, collision handling |
+| Recursion | Factorial, Fibonacci, recursive sum, recursive binary search |
 
-> Note: The repository currently has no committed application source files. The capabilities above describe the project scope supplied by the maintainer and should be verified against the implementation as the application is committed.
+### Backend implementations
 
-## Learning workflow
+The backend contains reusable implementations for stacks, queues, linked lists, BSTs, heaps, graphs, AVL trees, hash tables, circular queues, and tries. The execution API exposes validated operations for stack, queue, linked list, doubly linked list, BST, heap, and graph sessions.
+
+### Algorithms
+
+The backend provides step-producing implementations for:
+
+- Linear search — `O(n)` time, `O(1)` space
+- Binary search — `O(log n)` time, `O(1)` space
+- Bubble sort — `O(n²)` time
+- Insertion sort — `O(n²)` time
+- Merge sort — `O(n log n)` time, `O(n)` space
+- Quick sort — `O(n log n)` time, `O(log n)` space as reported by the implementation
+- Breadth-first search — `O(V + E)` time, `O(V)` space
+- Depth-first search — `O(V + E)` time, `O(V)` space
+- Dijkstra’s algorithm — `O((V + E) log V)` time, `O(V)` space
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    A[Choose a DSA topic] --> B[Explore code and operations]
-    B --> C[Review step-by-step execution]
-    C --> D[Understand the visualization]
-    D --> E[Ask for an AI-assisted explanation]
-    E --> F[Review the learning guidance]
+flowchart LR
+    UI[React + Vite frontend] -->|REST / JSON| API[FastAPI backend]
+    UI --> VIS[Visualizer components]
+    UI --> EDITOR[Program editor]
+    API --> PARSER[Natural-language parser and validator]
+    API --> ENGINE[Session manager and DSA engine]
+    API --> RUNNER[Safe program runner]
+    API --> TUTOR[Local tutor provider]
+    API --> DB[(SQLite or PostgreSQL)]
+    ENGINE --> EVENTS[State snapshots and complexity metadata]
+    RUNNER --> EVENTS
+    EVENTS --> VIS
 ```
 
-This diagram represents the intended learning experience. The final workflow should be updated when the application implementation is available.
+The application does not use `exec` or `eval` for visualization. Program execution is handled by the backend with language-specific toolchains, timeouts, restricted environment variables, output limits, and blocked system/network/filesystem patterns.
 
 ## Technology stack
 
-The project is intended to use modern web technologies and Google Gemini-based AI assistance. The exact framework, libraries, scripts, and API configuration are not yet verifiable because the repository currently contains no `package.json` or source tree.
+### Frontend
 
-When implementation files are available, this section should list only technologies confirmed by the codebase, such as:
+- React 19 and TypeScript
+- Vite 8
+- React Router
+- Tailwind CSS 4 with the Vite plugin
+- Framer Motion
+- React Flow and D3
+- Monaco Editor
+- Axios and Lucide React
+- Oxlint
 
-- frontend framework;
-- programming language;
-- styling and UI libraries;
-- visualization libraries;
-- AI SDK or API client;
-- testing tools; and
-- deployment configuration.
+### Backend
 
-## Getting started
+- Python and FastAPI
+- Uvicorn
+- Pydantic
+- SQLAlchemy
+- SQLite locally, with PostgreSQL configuration support
+- `python-dotenv`
+- `pytest`
+- `google-genai` listed as an available backend dependency
 
-### Prerequisites
+The current chat endpoint uses the deterministic local tutor provider and returns `provider: "local"`. Provider configuration is available through environment variables for future or optional integrations.
 
-The required runtime and package-manager versions will be documented after the project manifest is added.
+## Repository structure
 
-### Installation
+```text
+.
+├── backend/
+│   ├── app/
+│   │   ├── ai/                 # Parsing, validation, schemas, sessions
+│   │   ├── algorithms/         # Search, sort, and graph algorithms
+│   │   ├── api/                # FastAPI routers
+│   │   ├── data_structures/    # Core DSA implementations
+│   │   └── models/             # SQLAlchemy models
+│   ├── tests/                  # Backend tests
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/         # Shared UI components
+│   │   ├── data/               # Program definitions
+│   │   ├── pages/              # Landing, dashboard, learning, profile, admin
+│   │   ├── visualizers/         # DSA visualizer components
+│   │   └── ui-kit/             # Reusable UI primitives
+│   ├── public/                 # Static assets and reference images
+│   ├── package.json
+│   └── vite.config.ts
+├── docs/                       # Architecture and API notes
+├── package.json                # Root workspace scripts
+├── run.bat                     # Windows startup helper
+├── vercel.json                 # Root deployment configuration
+└── README.md
+```
+
+## Requirements
+
+- Node.js and npm
+- Python 3.10 or newer recommended
+- A C compiler (`gcc`) to run C programs
+- A C++ compiler (`g++`) to run C++ programs
+- A JDK (`javac` and `java`) to run Java programs
+- Optional PostgreSQL/Supabase database for hosted persistence
+
+Python execution works without an additional compiler. The backend reports a toolchain error when a requested compiler or JDK is unavailable.
+
+## Local setup
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/SairajAgawane/AI--DS-Visualizer-Pro.git
 cd AI--DS-Visualizer-Pro
 ```
 
-The dependency-installation command will be added after the project’s package manifest is committed.
+### 2. Install frontend dependencies
 
-### Environment variables
+From the repository root:
 
-The application is expected to require configuration for AI functionality. The exact environment-variable names must be taken from the implementation and should never be guessed or documented with real credentials.
+```bash
+npm install
+```
 
-Use a local environment file for development and configure deployment secrets through the hosting provider. Never commit API keys, tokens, or private credentials.
+The root workspace installs the `frontend` package through npm workspaces.
 
-### Run locally
+### 3. Configure the backend
 
-Development and production commands will be documented here once they are defined in the project configuration.
+Create a backend environment file:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+On Windows PowerShell, use:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+The backend defaults to SQLite at `sqlite:///./sql_app.db` and allows local frontend requests from `http://localhost:5173`.
+
+### 4. Start the backend
+
+```bash
+python -m venv .venv
+```
+
+Activate the environment and install dependencies:
+
+```bash
+# macOS/Linux
+source .venv/bin/activate
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+pip install -r backend/requirements.txt
+uvicorn app.main:app --reload --app-dir backend
+```
+
+The API is available at `http://localhost:8000`. Health check: `http://localhost:8000/api/health`.
+
+### 5. Configure and start the frontend
+
+Create the frontend environment file:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item frontend/.env.example frontend/.env
+```
+
+Start Vite:
+
+```bash
+npm run dev
+```
+
+The frontend uses `VITE_API_URL=http://localhost:8000` by default and is normally served at `http://localhost:5173`.
+
+## Environment variables
+
+### Frontend: `frontend/.env`
+
+| Variable | Purpose | Local default |
+| --- | --- | --- |
+| `VITE_API_URL` | Backend API base URL | `http://localhost:8000` |
+| `VITE_GOOGLE_CLIENT_ID` | Optional Google OAuth web client ID | Empty |
+
+### Backend: `backend/.env`
+
+| Variable | Purpose | Local default |
+| --- | --- | --- |
+| `AI_PROVIDER` | AI/tutor provider selection | `local` |
+| `AI_API_KEY` | Optional provider API key | Empty |
+| `AI_MODEL` | Optional provider model name | Empty |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:5173` |
+| `AUTH_SECRET` | Authentication signing secret | Replace for real deployments |
+| `GOOGLE_CLIENT_ID` | Optional backend Google client ID | Empty |
+| `DATABASE_URL` | SQLAlchemy database URL | `sqlite:///./sql_app.db` |
+
+Do not commit `.env` files or real secrets. Use deployment-provider secret settings for production credentials.
+
+## Available scripts
+
+Run these from the repository root:
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the frontend development server |
+| `npm run build` | Type-check and build the frontend |
+| `npm run preview` | Preview the production frontend build |
+| `npm run lint` | Run Oxlint on the frontend |
+
+Backend tests can be run with:
+
+```powershell
+# Windows PowerShell
+$env:PYTHONPATH = "backend"
+pytest backend/tests
+```
+
+```bash
+# macOS/Linux
+PYTHONPATH=backend pytest backend/tests
+```
+
+## API overview
+
+All API endpoints return JSON. Common routes include:
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/ai/parse` | Parse and validate a natural-language DSA command |
+| `POST /api/execute/` | Execute validated data-structure operations |
+| `POST /api/chat/` | Return tutor guidance for the current context |
+| `POST /api/algorithm/run` | Run a supported search/sort/graph algorithm |
+| `POST /api/code/analyze` | Analyze supported code patterns for visualization steps |
+| `POST /api/code/generate` | Generate educational source code from operations |
+| `POST /api/program/run` | Compile/run supported Python, C, C++, or Java programs |
+| `GET /api/history` | Retrieve operation history |
+| `GET /api/progress` | Retrieve authenticated user progress |
+| `GET /api/achievements` | Retrieve progress achievements |
+| `GET /api/health` | Check API and database health |
+
+More examples are available in [docs/api.md](docs/api.md).
 
 ## Deployment
 
-The project information supplied by the maintainer lists Vercel as the deployment platform.
+The frontend includes Vercel configuration in `frontend/vercel.json`, and the repository includes root deployment configuration in `vercel.json`. Set the frontend API URL and backend/deployment secrets in the hosting provider before deploying.
 
-Live project: [ai-ds-visualizer-pro.vercel.app](https://ai-ds-visualizer-pro.vercel.app/)
+Live application: [ai-ds-visualizer-pro.vercel.app](https://ai-ds-visualizer-pro.vercel.app/)
 
-The deployment URL and its relationship to the committed source should be verified when the application code is available.
+## Screenshots
 
-## Repository structure
+### Playground
 
-The repository does not currently contain a committed application structure. After the source is added, this section should describe the actual directories and their responsibilities, for example:
+![AI-DS Visualizer playground](frontend/public/ref-playground.png)
 
-```text
-project-root/
-├── src/                 # Application source
-├── public/              # Static assets
-├── package.json         # Dependencies and scripts
-└── README.md            # Project documentation
-```
+### Login
 
-The example above is illustrative only and must be replaced with the real project tree.
+![AI-DS Visualizer login screen](frontend/public/ref-login.png)
 
-## Security considerations
+## Security notes
 
-- Keep Gemini or other API credentials outside the repository.
-- Use environment variables or managed deployment secrets.
-- Do not expose private keys in client-side code unless the architecture explicitly requires it and the exposure is understood.
-- Validate user-provided code or input before executing or displaying it.
-- Review third-party dependencies before introducing them into the project.
-
-## Future enhancements
-
-Potential future improvements include:
-
-- expanding DSA coverage;
-- adding more execution visualizations;
-- supporting multiple programming languages;
-- adding progress tracking and practice exercises;
-- improving accessibility and keyboard navigation;
-- adding automated tests; and
-- providing richer AI explanations and examples.
-
-These are future possibilities, not currently verified features.
+- User code is validated against restricted system, process, network, and filesystem patterns before execution.
+- Execution uses temporary directories, a five-second timeout, output limits, and a restricted environment.
+- The backend does not use `exec` or `eval` for visualization.
+- Keep authentication secrets, database URLs, OAuth values, and API keys outside Git.
+- Review compiler/toolchain availability and deployment isolation before exposing program execution publicly.
 
 ## Contributing
 
-Contributions are welcome once the implementation and contribution workflow are established.
-
 1. Fork the repository.
-2. Create a focused branch for your change.
-3. Make the change and add appropriate tests where applicable.
-4. Update documentation when behavior changes.
-5. Open a pull request with a clear explanation of the change.
+2. Create a focused feature or fix branch.
+3. Run the frontend lint/build checks and backend tests.
+4. Update documentation when behavior or API contracts change.
+5. Open a pull request describing the change and verification performed.
 
-Please avoid committing secrets, generated build output, or unrelated changes.
+Please do not commit secrets, local databases, generated build output, or unrelated changes.
 
 ## License
 
-No `LICENSE` file is currently present in the repository. Add a license before distributing the project or accepting external contributions.
+No `LICENSE` file is currently included in the repository. Add a license before distributing the project or accepting external contributions.
 
 ## Developer
 
@@ -157,7 +342,3 @@ No `LICENSE` file is currently present in the repository. Add a license before d
 - GitHub: [SairajAgawane](https://github.com/SairajAgawane)
 - Repository: [AI--DS-Visualizer-Pro](https://github.com/SairajAgawane/AI--DS-Visualizer-Pro)
 - Live project: [ai-ds-visualizer-pro.vercel.app](https://ai-ds-visualizer-pro.vercel.app/)
-
-## Current repository note
-
-This README is prepared for the project’s GitHub repository using the project information supplied by the maintainer. The public repository currently has no committed source files, dependencies, screenshots, tests, or license, so implementation-specific claims should be updated after the application code is pushed.
