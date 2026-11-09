@@ -2,13 +2,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050914;
-  --secondary-bg: #0A1120;
-  --surface: #101827;
-  --card: #131D2D;
-  --border: #24344A;
-  --primary-cyan: #22D3EE;
-  --blue: #38BDF8;
+  --background: #080D18;
+  --secondary-bg: #0E1626;
+  --surface: #131F32;
+  --card: #131F32;
+  --border: rgba(148,163,184,0.14);
+  --primary-cyan: #06B6D4;
+  --blue: #3B82F6;
   --indigo: #6366F1;
   --purple: #8B5CF6;
   --success: #22C55E;
@@ -18,14 +18,14 @@
   --secondary-text: #CBD5E1;
   --muted-text: #64748B;
 
-  --bg: #050914;
-  --workspace: #0A1120;
-  --panel: #101827;
-  --panel-raised: #131D2D;
-  --panel-input: #0A1120;
-  --border-soft: #24344A;
-  --accent: #22D3EE;
-  --accent-blue: #38BDF8;
+  --bg: #080D18;
+  --workspace: #0E1626;
+  --panel: #131F32;
+  --panel-raised: #192840;
+  --panel-input: #0E1626;
+  --border-soft: rgba(148,163,184,0.14);
+  --accent: #06B6D4;
+  --accent-blue: #3B82F6;
   --accent-purple: #8B5CF6;
   --radius: 12px;
 
@@ -196,9 +196,9 @@ button { cursor: pointer; }
 :root {
   --bg-primary: #060A12;
   --bg-secondary: #0B1120;
-  --surface: #101827;
+  --surface: #131F32;
   --surface-hover: #151F2E;
-  --border: #24344A;
+  --border: rgba(148,163,184,0.14);
   --border-hover: #38506B;
   --primary: #22D3EE;
   --primary-light: #38BDF8;
