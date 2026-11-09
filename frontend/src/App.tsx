@@ -11,7 +11,7 @@ import AICopilotModal from './components/AICopilotModal';
 import AdminPanel from './pages/AdminPanel';
 import { chapters, type ChapterId, chapterById } from './programCatalog';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 type User = { id: number; name: string; email: string; role?: string };
 

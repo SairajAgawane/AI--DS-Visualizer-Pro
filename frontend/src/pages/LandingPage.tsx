@@ -21,7 +21,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 interface LandingPageProps {
   onLogin: (user: any) => void;
