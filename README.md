@@ -58,7 +58,7 @@ DSA concepts are often taught as static code listings or textbook diagrams. That
 
 ## 🧩 Interactive DSA modules
 
-The frontend program catalog contains 14 chapters and 80 learning programs.
+The frontend program catalog contains 14 chapters and 75 learning programs.
 
 | Module | Verified learning operations |
 | --- | --- |

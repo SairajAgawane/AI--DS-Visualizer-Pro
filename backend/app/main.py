@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 import json
+from datetime import datetime
 
 # Load .env before importing the database module so DATABASE_URL is available.
 load_dotenv()
@@ -97,12 +98,15 @@ try:
     admin_exists = _db.query(User).filter(User.role == "admin").first()
     if not admin_exists:
         admin_email = os.getenv("ADMIN_EMAIL", "admin@visualizer.pro").lower()
+        admin_pwd = os.getenv("ADMIN_PASSWORD")
+        if not admin_pwd:
+            _db.close()
+            raise RuntimeError("ADMIN_PASSWORD not configured")
         admin_user = _db.query(User).filter(User.email == admin_email).first()
         if admin_user:
             admin_user.role = "admin"
             admin_user.status = "active"
         else:
-            admin_pwd = os.getenv("ADMIN_PASSWORD", "AdminPassword123!")
             now_dt = datetime.utcnow()
             admin_user = User(
                 name="System Administrator",

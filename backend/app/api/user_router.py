@@ -70,7 +70,7 @@ class SyncProgressRequest(BaseModel):
 
 # Total chapters in curriculum
 TOTAL_CHAPTERS = 14
-TOTAL_PROGRAMS = 80
+TOTAL_PROGRAMS = 75
 
 DEFAULT_CHAPTER_PROGRESS = {
     "array": 0,

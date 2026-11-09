@@ -30,8 +30,46 @@ def local_answer(request: ChatRequest) -> str:
     return f"For the current {topic}, the visible state is {request.context_state!r}. Ask about its operations, complexity, or the current visualization."
 
 
+def _external_answer(request: ChatRequest) -> tuple[str, str] | None:
+    provider = os.getenv("AI_PROVIDER", "local").lower()
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    model = os.getenv("AI_MODEL", "").strip()
+    if provider == "local" or not api_key:
+        return None
+    if provider not in {"google", "gemini", "google-genai"}:
+        return None
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=api_key)
+        model_name = model or "gemini-2.0-flash"
+        prompt = (
+            "You are an educational DSA tutor. Answer concisely and accurately.\n"
+            f"Topic: {request.context_ds}\n"
+            f"Complexity: {request.complexity}\n"
+            f"Visible state: {request.context_state!r}\n"
+            f"Question: {request.message}"
+        )
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        text = getattr(response, "text", None)
+        if text:
+            return text.strip(), f"google-genai:{model_name}"
+    except Exception:
+        return None
+    return None
+
+
 @router.post("/")
 async def chat(request: ChatRequest):
-    # Optional provider support can be added behind this boundary. The local
-    # tutor keeps the core product useful and key-free during development.
+    external = _external_answer(request)
+    if external is not None:
+        text, provider = external
+        return {"response": text, "provider": provider}
+    provider = os.getenv("AI_PROVIDER", "local").lower()
+    api_key = os.getenv("AI_API_KEY", "").strip()
+    if provider != "local" and not api_key:
+        return {
+            "response": "External AI is configured as the provider, but AI_API_KEY is missing. Add it to backend/.env or use AI_PROVIDER=local.",
+            "provider": "unconfigured",
+        }
     return {"response": local_answer(request), "provider": "local"}
