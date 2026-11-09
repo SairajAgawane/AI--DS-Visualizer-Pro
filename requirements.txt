@@ -4,5 +4,3 @@ pydantic
 sqlalchemy
 python-dotenv
 google-genai
-pytest
-psycopg[binary]
