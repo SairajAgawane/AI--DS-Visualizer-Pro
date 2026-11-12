@@ -21,7 +21,11 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({ state, highlig
   const swappingIndices: number[] = highlight?.swapping || [];
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full py-4 px-2 select-none">
+    <div className="flex flex-col items-center justify-center w-full h-full py-2 px-2 select-none">
+      <div className="w-full flex items-center justify-between px-3 py-1.5 mb-2 rounded-lg bg-gradient-to-r from-[#22D3EE]/15 to-[#3B82F6]/15 border border-[#22D3EE]/30">
+        <span className="text-[11px] font-bold text-[#22D3EE] tracking-wider">ARRAY VISUALIZER PRO</span>
+        <span className="text-[10px] text-[#94A3B8]">Real-time execution engine</span>
+      </div>
       <div className="flex flex-col items-center w-full max-w-2xl overflow-x-auto py-2">
         {/* Index row header */}
         <div className="flex items-center justify-center gap-2 mb-2 w-full">
