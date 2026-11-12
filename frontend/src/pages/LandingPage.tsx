@@ -1,638 +1,235 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Play,
-  Terminal,
-  Code2,
-  BarChart3,
-  Bot,
-  Target,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  Zap,
-  Heart,
-  ArrowRight,
-  Shield,
-  User as UserIcon,
-  AlertCircle,
-  CheckCircle2,
+  Play, Terminal, Code2, BarChart3, Bot, Target,
+  Mail, Lock, Eye, EyeOff, Shield, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-interface LandingPageProps {
-  onLogin: (user: any) => void;
-}
+interface LandingPageProps { onLogin: (user: any) => void; }
+
+const features = [
+  { title: 'Interactive Visualizations', desc: 'See algorithms come to life.', icon: Play, color: '#22D3EE' },
+  { title: 'Real Code Execution', desc: 'Run, step, debug, and visualize.', icon: Terminal, color: '#3B82F6' },
+  { title: 'Multiple Languages', desc: 'C, C++, Java, Python.', icon: Code2, color: '#8B5CF6' },
+  { title: 'Track Your Progress', desc: 'Learn with structured paths.', icon: BarChart3, color: '#22C55E' },
+  { title: 'AI Student Copilot', desc: 'Get instant help and explanations.', icon: Bot, color: '#F59E0B' },
+  { title: 'Practice & Improve', desc: 'Solve, visualize, and master.', icon: Target, color: '#EF4444' },
+];
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
   const navigate = useNavigate();
-
-  // Tab State: 'user' | 'admin'
   const [activeTab, setActiveTab] = useState<'user' | 'admin'>('user');
-
-  // Sub-mode for User Tab: 'login' | 'signup'
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-
-  // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-
-  // Status & Feedback
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleTabChange = (tab: 'user' | 'admin') => {
-    setActiveTab(tab);
-    setAuthMode('login');
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setEmail('');
-    setPassword('');
+    setActiveTab(tab); setAuthMode('login');
+    setErrorMessage(null); setSuccessMessage(null);
+    setEmail(''); setPassword('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    // Validation
+    setErrorMessage(null); setSuccessMessage(null);
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
-      return;
-    }
-    if (!password) {
-      setErrorMessage('Please enter your password.');
-      return;
-    }
-
-    if (activeTab === 'user' && authMode === 'signup' && !name.trim()) {
-      setErrorMessage('Please enter your full name.');
-      return;
-    }
-
+    if (!cleanEmail || !cleanEmail.includes('@')) { setErrorMessage('Please enter a valid email address.'); return; }
+    if (!password) { setErrorMessage('Please enter your password.'); return; }
+    if (activeTab === 'user' && authMode === 'signup' && !name.trim()) { setErrorMessage('Please enter your full name.'); return; }
     setIsLoading(true);
-
     try {
       if (activeTab === 'user' && authMode === 'signup') {
-        // Real signup call
-        const res = await fetch(`${API}/api/auth/signup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: name.trim(),
-            email: cleanEmail,
-            password,
-          }),
-        });
-
+        const res = await fetch(`${API}/api/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim(), email: cleanEmail, password }) });
         const data = await res.json();
         if (data.success && data.user) {
           setSuccessMessage('Account created successfully! Loading workbench...');
           localStorage.setItem('aids_token', data.token);
-          if (rememberMe) {
-            localStorage.setItem('aids_user', JSON.stringify(data.user));
-          }
-          setTimeout(() => {
-            onLogin(data.user);
-            navigate('/dashboard');
-          }, 450);
-        } else {
-          setErrorMessage(data.message || data.error || 'Unable to register account.');
-        }
+          if (rememberMe) localStorage.setItem('aids_user', JSON.stringify(data.user));
+          setTimeout(() => { onLogin(data.user); navigate('/dashboard'); }, 450);
+        } else { setErrorMessage(data.message || data.error || 'Unable to register account.'); }
       } else {
-        // Real login call (either user or admin)
-        const res = await fetch(`${API}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: cleanEmail,
-            password,
-            expected_role: activeTab === 'admin' ? 'admin' : undefined,
-          }),
-        });
-
+        const res = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: cleanEmail, password, expected_role: activeTab === 'admin' ? 'admin' : undefined }) });
         const data = await res.json();
         if (data.success && data.user) {
-          const authenticatedUser = data.user;
-
-          // Double-check role enforcement
-          if (activeTab === 'admin' && authenticatedUser.role !== 'admin') {
-            setErrorMessage('Access denied. You do not have administrator permissions.');
-            setIsLoading(false);
-            return;
-          }
-
+          if (activeTab === 'admin' && data.user.role !== 'admin') { setErrorMessage('Access denied. You do not have administrator permissions.'); setIsLoading(false); return; }
           setSuccessMessage('Authentication successful! Initializing session...');
           localStorage.setItem('aids_token', data.token);
-          if (rememberMe) {
-            localStorage.setItem('aids_user', JSON.stringify(authenticatedUser));
-          }
-
-          setTimeout(() => {
-            onLogin(authenticatedUser);
-            if (authenticatedUser.role === 'admin') {
-              navigate('/admin');
-            } else {
-              navigate('/dashboard');
-            }
-          }, 450);
+          if (rememberMe) localStorage.setItem('aids_user', JSON.stringify(data.user));
+          setTimeout(() => { onLogin(data.user); navigate(data.user.role === 'admin' ? '/admin' : '/dashboard'); }, 450);
         } else {
-          // Provide appropriate error feedback matching prompt
-          if (activeTab === 'admin') {
-            setErrorMessage(data.message || 'Invalid administrator credentials.');
-          } else {
-            setErrorMessage(data.message || 'Invalid email or password.');
-          }
+          setErrorMessage(activeTab === 'admin' ? (data.message || 'Invalid administrator credentials.') : (data.message || 'Invalid email or password.'));
         }
       }
-    } catch (err) {
-      setErrorMessage('Unable to connect to authentication service. Please verify your connection.');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { setErrorMessage('Unable to connect to authentication service. Please verify your connection.'); }
+    finally { setIsLoading(false); }
   };
 
-  const featureCards = [
-    {
-      title: 'Interactive Visualizations',
-      desc: 'See algorithms come to life',
-      icon: Play,
-      gradient: 'from-[#22D3EE]/25 to-[#38BDF8]/20',
-      border: 'border-[#22D3EE]/40',
-      iconColor: 'text-[#22D3EE]',
-      glow: 'shadow-[0_0_15px_rgba(34,211,238,0.25)]',
-    },
-    {
-      title: 'Real Code Execution',
-      desc: 'Run, step, debug, and visualize',
-      icon: Terminal,
-      gradient: 'from-[#22C55E]/25 to-[#10B981]/20',
-      border: 'border-[#22C55E]/40',
-      iconColor: 'text-[#22C55E]',
-      glow: 'shadow-[0_0_15px_rgba(34,197,94,0.25)]',
-    },
-    {
-      title: 'Multiple Languages',
-      desc: 'C, C++, Java, Python',
-      icon: Code2,
-      gradient: 'from-[#8B5CF6]/25 to-[#6366F1]/20',
-      border: 'border-[#8B5CF6]/40',
-      iconColor: 'text-[#8B5CF6]',
-      glow: 'shadow-[0_0_15px_rgba(139,92,246,0.25)]',
-    },
-    {
-      title: 'Track Your Progress',
-      desc: 'Learn with structured paths',
-      icon: BarChart3,
-      gradient: 'from-[#F59E0B]/25 to-[#D97706]/20',
-      border: 'border-[#F59E0B]/40',
-      iconColor: 'text-[#F59E0B]',
-      glow: 'shadow-[0_0_15px_rgba(245,158,11,0.25)]',
-    },
-    {
-      title: 'AI Student Copilot',
-      desc: 'Get instant help and explanations',
-      icon: Bot,
-      gradient: 'from-[#22D3EE]/25 to-[#8B5CF6]/20',
-      border: 'border-[#22D3EE]/40',
-      iconColor: 'text-[#22D3EE]',
-      glow: 'shadow-[0_0_15px_rgba(34,211,238,0.25)]',
-    },
-    {
-      title: 'Practice & Improve',
-      desc: 'Solve, visualize, and master',
-      icon: Target,
-      gradient: 'from-[#EC4899]/25 to-[#D946EF]/20',
-      border: 'border-[#EC4899]/40',
-      iconColor: 'text-[#EC4899]',
-      glow: 'shadow-[0_0_15px_rgba(236,72,153,0.25)]',
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#050914] text-[#F8FAFC] font-sans flex flex-col justify-between relative overflow-hidden select-none">
-      {/* Background radial glowing gradients matching design tokens */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#22D3EE] opacity-[0.12] blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#8B5CF6] opacity-[0.12] blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute top-[40%] right-[30%] w-[35%] h-[35%] bg-[#38BDF8] opacity-[0.05] blur-[130px] rounded-full pointer-events-none" />
-
-      {/* TOP LANDING NAVBAR */}
-      <header className="relative z-20 flex items-center justify-between px-6 lg:px-12 py-5 max-w-7xl w-full mx-auto">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#22D3EE] via-[#6366F1] to-[#8B5CF6] text-white font-black text-sm flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.45)]">
-            <span>A</span>
-          </div>
+    <div style={{ minHeight: '100svh', background: '#060B16', color: '#F8FAFC', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Navbar */}
+      <nav style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', borderBottom: '1px solid #243449', background: 'rgba(6,11,22,0.8)', backdropFilter: 'blur(12px)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#22D3EE,#3B82F6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#060B16' }}>AI</div>
           <div>
-            <div className="font-extrabold text-base tracking-tight flex items-center gap-1.5">
-              <span className="text-[#F8FAFC]">AI-DS</span>
-              <span className="text-[#22D3EE] text-sm tracking-wider">VISUALIZER PRO</span>
-            </div>
-            <span className="text-[10px] font-mono text-[#64748B] block -mt-0.5">Autonomous Algorithm Engine</span>
+            <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: 0.5 }}>AI-DS VISUALIZER PRO</div>
+            <div style={{ fontSize: 11, color: '#94A3B8' }}>Autonomous Algorithm Engine</div>
           </div>
         </div>
-
-        {/* Secure Access Indicator Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#101827] border border-[#24344A] text-xs font-mono text-[#CBD5E1]">
-          <Shield className="w-3.5 h-3.5 text-[#22D3EE]" />
-          <span>Secure Access</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999, border: '1px solid #243449', background: 'rgba(34,211,238,0.08)', fontSize: 12, color: '#22D3EE' }}>
+          <Shield size={14} /> Secure Access
         </div>
-      </header>
+      </nav>
 
-      {/* MAIN HERO & LOGIN GATEWAY CONTAINER */}
-      <main className="relative z-10 max-w-7xl w-full mx-auto px-6 lg:px-12 py-6 flex flex-col lg:flex-row items-center justify-between gap-12 flex-1">
-        {/* LEFT HERO COLUMN */}
-        <div className="w-full lg:w-[54%] flex flex-col justify-center">
-          {/* Section 4 Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#101827]/80 border border-[#22D3EE]/40 text-xs font-mono text-[#CBD5E1] w-fit mb-5 shadow-[0_0_15px_rgba(34,211,238,0.15)]">
-            <span className="text-[#22D3EE]">Interactive Learning</span>
-            <span className="text-[#64748B]">•</span>
-            <span className="text-[#38BDF8]">Real Code Execution</span>
-            <span className="text-[#64748B]">•</span>
-            <span className="text-[#8B5CF6]">AI-Powered Learning</span>
+      {/* Main content */}
+      <main style={{ flex: 1, display: 'grid', gridTemplateColumns: '58% 42%', gap: 24, padding: '20px 32px', maxWidth: 1360, margin: '0 auto', width: '100%', minHeight: 0, overflow: 'hidden' }}>
+        {/* Left column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0, overflow: 'hidden' }}>
+          <div>
+            <h1 style={{ fontSize: 'clamp(28px, 3vw, 40px)', fontWeight: 800, lineHeight: 1.1, margin: 0 }}>
+              Master Data Structures and Algorithms with{' '}
+              <span style={{ background: 'linear-gradient(90deg,#22D3EE,#3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI-Powered</span>{' '}
+              <span style={{ background: 'linear-gradient(90deg,#3B82F6,#8B5CF6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Learning</span>
+            </h1>
+            <p style={{ color: '#94A3B8', fontSize: 14, marginTop: 8, lineHeight: 1.5, maxWidth: 600 }}>
+              Interactive visualizations, real code execution, AI guidance, and structured learning — everything you need to truly understand DSA.
+            </p>
           </div>
 
-          {/* Hero Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-black leading-[1.12] mb-5 tracking-tight text-[#F8FAFC]">
-            Master Data Structures<br />
-            and Algorithms<br />
-            with{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22D3EE] via-[#38BDF8] to-[#8B5CF6]">
-              AI-Powered Learning
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-xs sm:text-sm text-[#CBD5E1] max-w-xl mb-8 leading-relaxed">
-            Interactive visualizations, real code execution, AI guidance, and structured learning — everything you need
-            to truly understand DSA.
-          </p>
-
-          {/* Feature Badges Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl mb-8">
-            {featureCards.map((card) => {
-              const IconComp = card.icon;
+          {/* Feature cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {features.map((f, i) => {
+              const Icon = f.icon;
               return (
-                <div
-                  key={card.title}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-[#0A1120]/80 border border-[#24344A] hover:border-[#22D3EE]/40 backdrop-blur-md transition-all group"
-                >
-                  <div
-                    className={`w-9 h-9 rounded-xl bg-gradient-to-br ${card.gradient} border ${card.border} flex items-center justify-center shrink-0 ${card.glow}`}
-                  >
-                    <IconComp className={`w-4 h-4 ${card.iconColor}`} />
+                <div key={i} style={{ background: 'rgba(16,26,44,0.6)', border: '1px solid #243449', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s', cursor: 'default' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${f.color}22, ${f.color}11)`, border: `1px solid ${f.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={16} color={f.color} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-xs text-[#F8FAFC] group-hover:text-[#22D3EE] transition-colors">
-                      {card.title}
-                    </h3>
-                    <p className="text-[11px] text-[#64748B]">{card.desc}</p>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#F8FAFC' }}>{f.title}</div>
+                    <div style={{ fontSize: 11, color: '#94A3B8' }}>{f.desc}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Mini Array Visualizer Live Trace Simulation */}
-          <div className="relative max-w-xl rounded-2xl bg-[#0A1120]/90 border border-[#24344A] p-4 shadow-2xl backdrop-blur-xl overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#22D3EE]/10 rounded-full blur-2xl pointer-events-none" />
-
-            <div className="flex items-center justify-between pb-3 border-b border-[#24344A] text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]" />
-                <span className="font-mono text-[11px] text-[#CBD5E1] font-bold ml-2">Array Visualizer Demo</span>
+          {/* Array demo */}
+          <div style={{ background: 'rgba(16,26,44,0.6)', border: '1px solid #243449', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22D3EE' }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6' }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8B5CF6' }} />
+                <span style={{ fontWeight: 600, fontSize: 13, marginLeft: 4 }}>Array Visualizer Demo</span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-[#22D3EE]/10 border border-[#22D3EE]/30 text-[#22D3EE] text-[10px] font-mono font-bold">
-                Live Trace
-              </span>
+              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: 'rgba(34,211,238,0.15)', color: '#22D3EE', border: '1px solid rgba(34,211,238,0.3)' }}>Live Trace</span>
             </div>
-
-            <div className="pt-3 flex flex-col gap-2.5">
-              <div className="flex items-center justify-center gap-2 py-2 bg-[#050914] rounded-xl border border-[#24344A]/60 font-mono text-xs">
-                {[10, 20, 30, 40, 50].map((v, i) => (
-                  <div
-                    key={i}
-                    className={`px-3 py-1.5 rounded-lg border text-center font-bold transition-all ${
-                      i === 2
-                        ? 'border-[#22D3EE] bg-[#101827] text-[#22D3EE] shadow-[0_0_12px_rgba(34,211,238,0.4)]'
-                        : 'border-[#24344A] bg-[#0A1120] text-[#CBD5E1]'
-                    }`}
-                  >
-                    <div>{v}</div>
-                    <div className="text-[9px] text-[#64748B]">[{i}]</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 6 }}>
+              {[10, 20, 30, 40, 50].map((v, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{ width: 48, height: 40, borderRadius: 8, background: v === 30 ? 'linear-gradient(135deg,#22D3EE,#3B82F6)' : 'rgba(36,52,73,0.6)', border: `1px solid ${v === 30 ? '#22D3EE' : '#243449'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: v === 30 ? '#060B16' : '#F8FAFC', transition: 'all 0.2s' }}>
+                    {v}
                   </div>
+                  <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>[{i}]</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#94A3B8' }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {['Python', 'C++', 'Java'].map((l) => (
+                  <span key={l} style={{ padding: '2px 8px', borderRadius: 6, background: 'rgba(36,52,73,0.6)', border: '1px solid #243449', fontSize: 10 }}>{l}</span>
                 ))}
               </div>
-
-              <div className="flex items-center justify-between text-[11px] font-mono text-[#64748B] pt-1">
-                <div className="flex items-center gap-3">
-                  <span className="px-2 py-0.5 rounded bg-[#101827] border border-[#24344A] text-[#38BDF8]">
-                    🐍 Python
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-[#101827] border border-[#24344A] text-[#6366F1]">
-                    ⚡ C++
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-[#101827] border border-[#24344A] text-[#F59E0B]">
-                    ☕ Java
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[#22D3EE] font-bold">
-                  <span className="text-base">🤖</span>
-                  <span>AI Copilot Active</span>
-                </div>
-              </div>
+              <span style={{ color: '#22D3EE', fontSize: 10 }}>● AI Copilot Active</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SECTION 5 PREMIUM GLASS LOGIN CARD */}
-        <div className="w-full lg:w-[440px] shrink-0">
-          <div
-            style={{
-              background: 'rgba(16, 24, 39, 0.85)',
-              border: '1px solid rgba(34, 211, 238, 0.30)',
-              borderRadius: '20px',
-              backdropFilter: 'blur(16px)',
-              boxShadow: '0 0 50px rgba(34, 211, 238, 0.15), 0 0 30px rgba(139, 92, 246, 0.10)',
-            }}
-            className="p-8 relative overflow-hidden transition-all duration-300"
-          >
-            {/* Header: Logo, Welcome Back, Choose Access Type */}
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#22D3EE] via-[#6366F1] to-[#8B5CF6] text-white font-black text-xl mx-auto mb-3 flex items-center justify-center shadow-[0_0_25px_rgba(34,211,238,0.45)]">
-                <span>A</span>
-              </div>
-              <div className="font-mono text-[10px] tracking-widest text-[#22D3EE] font-bold mb-1 uppercase">
-                AI-DS VISUALIZER PRO
-              </div>
-              <h2 className="text-2xl font-extrabold text-[#F8FAFC]">
-                Welcome <span className="text-[#38BDF8]">Back</span>
-              </h2>
-              <p className="text-xs text-[#CBD5E1] mt-1">Choose your access type to continue.</p>
+        {/* Right column - Login card */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+          <div style={{ width: '100%', maxWidth: 400, background: 'rgba(16,26,44,0.8)', border: '1px solid #243449', borderRadius: 16, padding: '24px 24px', backdropFilter: 'blur(12px)', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg,#22D3EE,#3B82F6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#060B16', margin: '0 auto 8px', fontSize: 18 }}>AI</div>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Welcome <span style={{ background: 'linear-gradient(90deg,#22D3EE,#3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Back</span></h2>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Choose your access type to continue.</p>
             </div>
 
-            {/* SECTION 6: LOGIN TYPE SELECTOR (TWO TABS: USER LOGIN & ADMIN LOGIN) */}
-            <div className="flex bg-[#0A1120] p-1.5 rounded-xl border border-[#24344A] mb-6">
-              <button
-                type="button"
-                onClick={() => handleTabChange('user')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
-                  activeTab === 'user'
-                    ? 'bg-gradient-to-r from-[#22D3EE] via-[#38BDF8] to-[#8B5CF6] text-[#050914] shadow-[0_0_20px_rgba(34,211,238,0.35)] font-black'
-                    : 'text-[#64748B] hover:text-[#CBD5E1] border border-transparent'
-                }`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>USER LOGIN</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('admin')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
-                  activeTab === 'admin'
-                    ? 'bg-gradient-to-r from-[#22D3EE] via-[#38BDF8] to-[#8B5CF6] text-[#050914] shadow-[0_0_20px_rgba(34,211,238,0.35)] font-black'
-                    : 'text-[#64748B] hover:text-[#CBD5E1] border border-transparent'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>ADMIN LOGIN</span>
-              </button>
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 4, background: 'rgba(9,19,33,0.6)', borderRadius: 10, padding: 4, marginBottom: 16 }}>
+              {(['user', 'admin'] as const).map((t) => (
+                <button key={t} onClick={() => handleTabChange(t)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: activeTab === t ? 'linear-gradient(135deg,#22D3EE,#3B82F6)' : 'transparent', color: activeTab === t ? '#060B16' : '#94A3B8', transition: 'all 0.2s' }}>
+                  {t === 'user' ? 'User Login' : 'Admin Login'}
+                </button>
+              ))}
             </div>
 
-            {/* Form Title & Subtitle Banner */}
-            <div className="mb-4">
-              {activeTab === 'user' ? (
-                <div>
-                  <h3 className="text-sm font-bold text-[#F8FAFC]">
-                    {authMode === 'login' ? 'User Login' : 'Create Account'}
-                  </h3>
-                  <p className="text-[11px] text-[#64748B]">
-                    {authMode === 'login'
-                      ? 'Student & developer access to interactive algorithms'
-                      : 'Join AI-DS Visualizer Pro to track your learning journey'}
-                  </p>
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-[#101827] border border-[#22D3EE]/30">
-                  <h3 className="text-sm font-bold text-[#22D3EE] flex items-center gap-1.5">
-                    <Shield className="w-4 h-4" />
-                    Admin Login
-                  </h3>
-                  <p className="text-[11px] text-[#CBD5E1] mt-0.5">Administrator access only</p>
-                </div>
-              )}
-            </div>
+            {errorMessage && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', color: '#EF4444', fontSize: 12, marginBottom: 12 }}>{errorMessage}</div>}
+            {successMessage && <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '8px 12px', color: '#22C55E', fontSize: 12, marginBottom: 12 }}>{successMessage}</div>}
 
-            {/* Error & Success Alert Banners */}
-            {errorMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                <span className="flex-1">{errorMessage}</span>
-              </div>
-            )}
-            {successMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-start gap-2 animate-in fade-in">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
-                <span className="flex-1">{successMessage}</span>
-              </div>
-            )}
-
-            {/* FORM */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* If User Sign-up Mode: Name Field */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {activeTab === 'user' && authMode === 'signup' && (
                 <div>
-                  <label className="block text-xs text-[#CBD5E1] mb-1.5 font-medium">Full Name</label>
-                  <div className="relative">
-                    <UserIcon className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3.5 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your full name"
-                      className="w-full h-[48px] bg-[#0A1120] border border-[#24344A] rounded-xl pl-10 pr-4 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:border-[#22D3EE] focus:ring-1 focus:ring-[#22D3EE]/30 transition-all"
-                    />
-                  </div>
+                  <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Full Name</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #243449', background: '#091321', color: '#F8FAFC', fontSize: 13, outline: 'none' }} />
                 </div>
               )}
-
-              {/* Email Address */}
               <div>
-                <label className="block text-xs text-[#CBD5E1] mb-1.5 font-medium">
-                  {activeTab === 'admin' ? 'Admin Email' : 'Email Address'}
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3.5 pointer-events-none" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={activeTab === 'admin' ? 'Enter admin email' : 'Enter your email'}
-                    className="w-full h-[48px] bg-[#0A1120] border border-[#24344A] rounded-xl pl-10 pr-4 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:border-[#22D3EE] focus:ring-1 focus:ring-[#22D3EE]/30 transition-all font-mono"
-                  />
+                <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={{ width: '100%', padding: '10px 12px 10px 34px', borderRadius: 8, border: '1px solid #243449', background: '#091321', color: '#F8FAFC', fontSize: 13, outline: 'none' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && void handleSubmit(e as any)} style={{ width: '100%', padding: '10px 36px 10px 34px', borderRadius: 8, border: '1px solid #243449', background: '#091321', color: '#F8FAFC', fontSize: 13, outline: 'none' }} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: 11 }}>{showPassword ? 'Hide' : 'Show'}</button>
                 </div>
               </div>
 
-              {/* Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs text-[#CBD5E1] font-medium">
-                    {activeTab === 'admin' ? 'Admin Password' : 'Password'}
+              {activeTab === 'user' && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94A3B8', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} /> Remember Me
                   </label>
-                  {activeTab === 'user' && authMode === 'login' && (
-                    <a
-                      href="#forgot"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        alert('Password reset link dispatched if account exists.');
-                      }}
-                      className="text-[11px] text-[#38BDF8] hover:underline"
-                    >
-                      Forgot Password?
-                    </a>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-3.5 pointer-events-none" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={activeTab === 'admin' ? 'Enter admin password' : 'Enter your password'}
-                    className="w-full h-[48px] bg-[#0A1120] border border-[#24344A] rounded-xl pl-10 pr-10 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:border-[#22D3EE] focus:ring-1 focus:ring-[#22D3EE]/30 transition-all font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-[#64748B] hover:text-white"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me for User Mode */}
-              {activeTab === 'user' && authMode === 'login' && (
-                <div className="flex items-center text-xs pt-0.5">
-                  <label className="flex items-center gap-2 cursor-pointer text-[#CBD5E1]">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded border-[#24344A] bg-[#0A1120] text-[#22D3EE] focus:ring-[#22D3EE]"
-                    />
-                    <span>Remember Me</span>
-                  </label>
+                  <a href="#" style={{ color: '#22D3EE', textDecoration: 'none' }}>Forgot Password?</a>
                 </div>
               )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-[48px] bg-gradient-to-r from-[#22D3EE] via-[#6366F1] to-[#8B5CF6] hover:opacity-95 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-[0_0_25px_rgba(34,211,238,0.35)] transition-all flex items-center justify-center gap-2 mt-2"
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    <span>Authenticating...</span>
-                  </span>
-                ) : (
-                  <>
-                    <span>
-                      {activeTab === 'admin'
-                        ? 'ADMIN LOGIN'
-                        : authMode === 'signup'
-                        ? 'CREATE ACCOUNT'
-                        : 'LOGIN'}
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+              <button type="submit" disabled={isLoading} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg,#22D3EE,#3B82F6)', color: '#060B16', opacity: isLoading ? 0.7 : 1, transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(34,211,238,0.3)' }}>
+                {isLoading ? 'Please wait...' : activeTab === 'user' && authMode === 'signup' ? 'Create Account' : 'Login'}
               </button>
             </form>
 
-            {/* User Tab Switch to Sign-up or Login */}
             {activeTab === 'user' && (
-              <div className="text-center text-xs text-[#CBD5E1] mt-6 pt-4 border-t border-[#24344A]/60">
-                {authMode === 'login' ? (
-                  <span>
-                    Don't have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('signup');
-                        setErrorMessage(null);
-                      }}
-                      className="text-[#38BDF8] font-bold hover:underline"
-                    >
-                      Create Account
-                    </button>
-                  </span>
-                ) : (
-                  <span>
-                    Already have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('login');
-                        setErrorMessage(null);
-                      }}
-                      className="text-[#38BDF8] font-bold hover:underline"
-                    >
-                      Sign In
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'admin' && (
-              <div className="text-center text-[11px] text-[#64748B] mt-5 pt-3 border-t border-[#24344A]/60">
-                <span>Direct Administrator Gateway • Role-Protected</span>
-              </div>
+              <p style={{ textAlign: 'center', fontSize: 12, color: '#94A3B8', marginTop: 12 }}>
+                {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} style={{ background: 'none', border: 'none', color: '#22D3EE', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                  {authMode === 'login' ? 'Create Account' : 'Sign In'}
+                </button>
+              </p>
             )}
           </div>
         </div>
       </main>
 
-      {/* FOOTER TRUST SECTION */}
-      <footer className="relative z-20 border-t border-[#24344A]/60 py-4 px-6 lg:px-12 bg-[#0A1120]/70 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center md:justify-between gap-6 text-xs text-[#64748B]">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
-            <span>
-              <strong className="text-[#CBD5E1]">Secure & Private</strong> · Role-based access control
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#22D3EE]" />
-            <span>
-              <strong className="text-[#CBD5E1]">Real Execution Engine</strong> · Python, C++, Java
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-[#8B5CF6]" />
-            <span>
-              <strong className="text-[#CBD5E1]">AI Guidance</strong> · Adaptive step debugging
-            </span>
-          </div>
-        </div>
+      {/* Footer */}
+      <footer style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, borderTop: '1px solid #243449', background: 'rgba(6,11,22,0.8)', flexShrink: 0, fontSize: 11, color: '#94A3B8' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={12} color="#22D3EE" /> Secure & Private — Role-based access control</span>
+        <span style={{ color: '#243449' }}>|</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Code2 size={12} color="#3B82F6" /> Real Execution Engine — Python, C++, Java</span>
+        <span style={{ color: '#243449' }}>|</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Bot size={12} color="#8B5CF6" /> AI Guidance — Adaptive step debugging</span>
       </footer>
     </div>
   );
