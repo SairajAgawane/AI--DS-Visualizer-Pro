@@ -9,12 +9,17 @@ from app.ai.schemas import ChatRequest
 router = APIRouter()
 
 KNOWLEDGE = {
+    "array": "An array is a linear data structure that stores elements in contiguous memory locations. Access is O(1) by index; insertion and deletion are O(n) due to shifting.",
     "stack": "A stack is LIFO: the last item pushed is the first item popped. Push, pop, and peek are O(1).",
     "queue": "A queue is FIFO: the first item enqueued is the first item dequeued. Enqueue and front are O(1); this implementation uses a list, so dequeue is O(n).",
     "linked_list": "A singly linked list stores nodes connected by next pointers. Inserting at the head is O(1); searching and reversing are O(n).",
     "bst": "A binary search tree keeps smaller keys on the left and larger keys on the right. Search is O(log n) on average and O(n) in the worst case.",
     "heap": "A min-heap keeps its smallest item at the root. Peek is O(1), while insert and extract are O(log n).",
     "graph": "A graph models vertices and edges. BFS and DFS visit reachable vertices in O(V + E).",
+    "hash_table": "A hash table maps keys to values using a hash function. Average lookup, insert, and delete are O(1); worst case O(n).",
+    "searching": "Linear search scans elements one by one in O(n). Binary search requires sorted data and runs in O(log n).",
+    "sorting": "Common sorts: Bubble/Selection/Insertion O(n^2); Merge/Heap O(n log n); Quick O(n log n) average.",
+    "recursion": "Recursion solves a problem by calling itself on smaller subproblems, with a base case to stop. Each call uses stack space.",
 }
 
 
@@ -26,8 +31,11 @@ def local_answer(request: ChatRequest) -> str:
     if "why" in message and "pop" in message and "stack" in message:
         return "Stack pop removes the last list item, so it does not scan other elements and runs in O(1)."
     if "explain" in message or "what is" in message or "how" in message:
-        return KNOWLEDGE.get(topic, "Select a data structure and ask me about its operations, invariants, or complexity.")
-    return f"For the current {topic}, the visible state is {request.context_state!r}. Ask about its operations, complexity, or the current visualization."
+        base = KNOWLEDGE.get(topic, "")
+        if base:
+            return base
+        return f"Here is a concise explanation for your question about {topic}: focus on the core operations, invariants, and time/space complexity. Ask for a specific operation or example for more detail."
+    return f"You asked: \"{request.message}\". For {topic}, the current state is {request.context_state!r}. Ask about operations, complexity, or request an example for a focused answer."
 
 
 def _external_answer(request: ChatRequest) -> tuple[str, str] | None:
