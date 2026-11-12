@@ -121,7 +121,7 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({ isOpen, onClose,
 
         <div className="flex items-center gap-2 px-6 py-3 bg-[#0d1420] border-b border-[#24344A] overflow-x-auto select-none no-scrollbar">
           {quickActions.map((act) => (
-            <button key={act.key} onClick={() => handleSendMessage(act.label, act.key)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#131D2D] hover:bg-[#24344A] border border-[#24344A] hover:border-[#22D3EE]/50 text-xs font-medium text-[#CBD5E1] whitespace-nowrap transition-all">
+            <button key={act.key} onClick={() => handleSendMessage(act.label)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#131D2D] hover:bg-[#24344A] border border-[#24344A] hover:border-[#22D3EE]/50 text-xs font-medium text-[#CBD5E1] whitespace-nowrap transition-all">
               <span>{act.icon}</span><span>{act.label}</span>
             </button>
           ))}
