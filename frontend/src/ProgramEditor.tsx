@@ -388,8 +388,42 @@ export default function ProgramEditor({ api, chapter = 'array', selectedProgram 
 
   const handleApplyInput = () => {
     const elts = elementsInput.trim();
+    if (!elts) {
+      setStatus('Error: Input cannot be empty.');
+      return;
+    }
+    const parsed = elts.split(/\s+/).map((v) => parseInt(v, 10)).filter((v) => !isNaN(v));
+    if (!parsed.length) {
+      setStatus('Error: No valid numbers found in input.');
+      return;
+    }
+    const size = parseInt(arraySize, 10);
+    if (!isNaN(size) && size > 0 && parsed.length !== size) {
+      setStatus(`Error: Array size (${size}) does not match number of elements (${parsed.length}).`);
+      return;
+    }
     setProgramInput(elts);
-    void runProgram();
+    // Reset all previous execution state
+    setSteps([]);
+    setCurrentStepIndex(-1);
+    setPlaying(false);
+    setRawOutput('');
+    setError(null);
+    // Create a single state snapshot showing the newly applied array
+    const initStep: any = {
+      step: 1,
+      type: 'ARRAY_CREATE',
+      operation: 'APPLY_INPUT',
+      data_structure: chapter,
+      line: 1,
+      description: `Applied input: [${parsed.join(', ')}]`,
+      state: parsed,
+      variables: { n: parsed.length, arr: parsed },
+      log: { type: 'INFO', message: `Array input applied successfully. ${parsed.length} elements loaded.` },
+    };
+    setSteps([initStep]);
+    setCurrentStepIndex(0);
+    setStatus(`Array input applied successfully. ${parsed.length} elements loaded.`);
   };
 
   // Keyboard Shortcuts
