@@ -41,18 +41,53 @@ KNOWLEDGE = {
 
 
 def local_answer(request: ChatRequest) -> str:
-    message = request.message.lower()
-    topic = (request.context_ds or "stack").lower()
-    if "difference" in message and "bfs" in message and "dfs" in message:
+    message = request.message.strip()
+    low = message.lower()
+    topic = (request.context_ds or "").lower()
+
+    # Greetings
+    if low in ("hi", "hello", "hey", "hola", "greetings"):
+        return "Hello! I am your AI Student Copilot. I can help you with Data Structures, Algorithms, programming, and general computer science questions. How can I assist you today?"
+
+    # Name introduction
+    if "my name is" in low or "i am " in low or "i'm " in low:
+        name = message.split()[-1].rstrip(".!,")
+        return f"Nice to meet you, {name}! I am your AI Student Copilot. I can help you with Data Structures, Algorithms, programming, and general computer science questions. What would you like to learn?"
+
+    # Thank you
+    if "thank" in low:
+        return "You're welcome! Happy to help. Feel free to ask more questions anytime."
+
+    # DSA-specific knowledge
+    if "difference" in low and "bfs" in low and "dfs" in low:
         return "BFS explores level by level using a queue; DFS explores deeply using recursion or a stack. Both run in O(V + E) with an adjacency list."
-    if "why" in message and "pop" in message and "stack" in message:
+    if "why" in low and "pop" in low and "stack" in low:
         return "Stack pop removes the last list item, so it does not scan other elements and runs in O(1)."
-    if "explain" in message or "what is" in message or "how" in message:
-        base = KNOWLEDGE.get(topic, "")
-        if base:
-            return base
-        return f"Here is a concise explanation for your question about {topic}: focus on the core operations, invariants, and time/space complexity. Ask for a specific operation or example for more detail."
-    return f"You asked: \"{request.message}\". For {topic}, the current state is {request.context_state!r}. Ask about operations, complexity, or request an example for a focused answer."
+
+    # Topic knowledge lookup (works for any context, including dashboard)
+    base = KNOWLEDGE.get(topic, "")
+    if ("explain" in low or "what is" in low or "how" in low or "define" in low) and base:
+        return base
+
+    # Code requests
+    if "code" in low or "program" in low or "implement" in low:
+        lang = "Python"
+        if "c++" in low or "cpp" in low:
+            lang = "C++"
+        elif " c " in low or low.endswith(" in c") or " in c" in low:
+            lang = "C"
+        elif "java" in low:
+            lang = "Java"
+        return f"I can help you write {lang} code for {topic if topic and topic != 'dashboard' else 'your topic'}. Please specify the exact problem or algorithm, and I will generate a complete, well-commented solution with an explanation."
+
+    # Generic helpful fallback (never the old dashboard fallback)
+    if topic and topic != "dashboard" and topic in KNOWLEDGE:
+        return KNOWLEDGE[topic]
+    return (
+        f"You asked: \"{message}\". I am your AI Student Copilot and I can help with Data Structures, Algorithms, "
+        "programming in C/C++/Java/Python, complexity analysis, and debugging. "
+        "For deeper, ChatGPT-like answers, configure a GEMINI_API_KEY in your backend .env and Vercel environment variables."
+    )
 
 
 def _gemini_answer(request: ChatRequest) -> tuple[str, str] | None:
