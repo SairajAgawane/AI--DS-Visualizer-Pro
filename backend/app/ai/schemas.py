@@ -38,7 +38,8 @@ class ExecuteRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=1000)
+    message: str = Field(..., min_length=1, max_length=4000)
     context_ds: str = "stack"
     context_state: Any = None
     complexity: str = ""
+    history: list[dict[str, str]] | None = None

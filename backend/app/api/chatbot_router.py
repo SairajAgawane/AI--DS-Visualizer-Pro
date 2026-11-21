@@ -8,6 +8,23 @@ from app.ai.schemas import ChatRequest
 
 router = APIRouter()
 
+SYSTEM_PROMPT = (
+    "You are AI Student Copilot, an intelligent programming tutor integrated into AI-DS Visualizer Pro.\n"
+    "Answer the user's actual question directly and accurately.\n"
+    "Understand the context before responding.\n"
+    "Support programming, Data Structures, Algorithms, Python, C, C++, Java, SQL, DBMS, AI, Machine Learning, mathematics, and Computer Science.\n"
+    "Explain complex concepts in simple language.\n"
+    "Provide practical examples and correct code.\n"
+    "When debugging, identify the actual error and explain how to fix it.\n"
+    "When explaining algorithms, include step-by-step working and time and space complexity.\n"
+    "Use the conversation history when relevant.\n"
+    "Do not respond with generic greetings to technical questions.\n"
+    "Do not repeat the same answer for unrelated questions.\n"
+    "Do not invent facts or claim code was executed without an actual execution result.\n"
+    "If a question is unclear, ask a relevant clarification.\n"
+    "Always prioritize answering the user's actual question."
+)
+
 KNOWLEDGE = {
     "array": "An array is a linear data structure that stores elements in contiguous memory locations. Access is O(1) by index; insertion and deletion are O(n) due to shifting.",
     "stack": "A stack is LIFO: the last item pushed is the first item popped. Push, pop, and peek are O(1).",
@@ -25,7 +42,7 @@ KNOWLEDGE = {
 
 def local_answer(request: ChatRequest) -> str:
     message = request.message.lower()
-    topic = request.context_ds.lower()
+    topic = (request.context_ds or "stack").lower()
     if "difference" in message and "bfs" in message and "dfs" in message:
         return "BFS explores level by level using a queue; DFS explores deeply using recursion or a stack. Both run in O(V + E) with an adjacency list."
     if "why" in message and "pop" in message and "stack" in message:
@@ -38,46 +55,48 @@ def local_answer(request: ChatRequest) -> str:
     return f"You asked: \"{request.message}\". For {topic}, the current state is {request.context_state!r}. Ask about operations, complexity, or request an example for a focused answer."
 
 
-def _external_answer(request: ChatRequest) -> tuple[str, str] | None:
-    provider = os.getenv("AI_PROVIDER", "local").lower()
-    api_key = os.getenv("AI_API_KEY", "").strip()
-    model = os.getenv("AI_MODEL", "").strip()
-    if provider == "local" or not api_key:
-        return None
-    if provider not in {"google", "gemini", "google-genai"}:
+def _gemini_answer(request: ChatRequest) -> tuple[str, str] | None:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    model = os.getenv("GEMINI_MODEL", "").strip() or "gemini-2.0-flash"
+    if not api_key:
         return None
     try:
         from google import genai
-
         client = genai.Client(api_key=api_key)
-        model_name = model or "gemini-2.0-flash"
-        prompt = (
-            "You are an educational DSA tutor. Answer concisely and accurately.\n"
-            f"Topic: {request.context_ds}\n"
-            f"Complexity: {request.complexity}\n"
-            f"Visible state: {request.context_state!r}\n"
-            f"Question: {request.message}"
+        context = f"Current topic context: {request.context_ds}\nVisible state: {request.context_state!r}\nComplexity: {request.complexity}"
+        contents = []
+        if request.history:
+            for h in request.history:
+                role = h.get("role", "user")
+                text = h.get("text", "")
+                if text:
+                    contents.append({"role": "user" if role == "user" else "model", "parts": [{"text": text}]})
+        contents.append({"role": "user", "parts": [{"text": request.message}]})
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config={"system_instruction": SYSTEM_PROMPT + "\n\n" + context},
         )
-        response = client.models.generate_content(model=model_name, contents=prompt)
         text = getattr(response, "text", None)
         if text:
-            return text.strip(), f"google-genai:{model_name}"
-    except Exception:
+            return text.strip(), f"gemini:{model}"
+    except Exception as exc:
         return None
     return None
 
 
 @router.post("/")
 async def chat(request: ChatRequest):
-    external = _external_answer(request)
-    if external is not None:
-        text, provider = external
+    gemini = _gemini_answer(request)
+    if gemini is not None:
+        text, provider = gemini
         return {"response": text, "provider": provider}
-    provider = os.getenv("AI_PROVIDER", "local").lower()
-    api_key = os.getenv("AI_API_KEY", "").strip()
-    if provider != "local" and not api_key:
+    # Fall back to local tutor if no Gemini key or request failed
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    ai_provider = os.getenv("AI_PROVIDER", "").strip().lower()
+    if (ai_provider in ("gemini", "google", "google-genai") or os.getenv("GEMINI_MODEL")) and not api_key:
         return {
-            "response": "External AI is configured as the provider, but AI_API_KEY is missing. Add it to backend/.env or use AI_PROVIDER=local.",
+            "response": "Gemini API is configured as the provider, but GEMINI_API_KEY is missing. Add it to backend/.env and redeploy.",
             "provider": "unconfigured",
         }
     return {"response": local_answer(request), "provider": "local"}

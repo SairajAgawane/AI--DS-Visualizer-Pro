@@ -61,6 +61,7 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({ isOpen, onClose,
           context_ds: context?.chapterId || 'stack',
           context_state: context?.contextState ?? null,
           complexity: context?.complexity?.timeAverage || '',
+          history: messages.slice(-10).map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', text: m.text })),
         }),
       });
       const data = await res.json();
